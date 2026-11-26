@@ -969,6 +969,32 @@ static void update_window_style(struct vo_w32_state *w32)
     w32->current_rect = wr;
 }
 
+// Smallest client area --window-min-screen allows for a window of the given
+// aspect ratio: that shape fitted in that fraction of the screen.
+static bool get_min_size(struct vo_w32_state *w32, int aspect_w, int aspect_h,
+                         int *width, int *height)
+{
+    double fraction = w32->opts->window_min_screen;
+    if (fraction <= 0 || w32->parent || aspect_w <= 0 || aspect_h <= 0)
+        return false;
+
+    RECT screen = get_monitor_info(w32).rcMonitor;
+    double scale = fraction * MPMIN((double)rect_w(screen) / aspect_w,
+                                    (double)rect_h(screen) / aspect_h);
+    *width = lrint(aspect_w * scale);
+    *height = lrint(aspect_h * scale);
+    return true;
+}
+
+static void clamp_min_size(struct vo_w32_state *w32, int *width, int *height)
+{
+    int min_w, min_h;
+    if (!get_min_size(w32, *width, *height, &min_w, &min_h))
+        return;
+    *width = MPMAX(*width, min_w);
+    *height = MPMAX(*height, min_h);
+}
+
 // Resize window rect to width = w and height = h. If window is snapped,
 // don't let it detach from snapped borders. Otherwise resize around the center.
 static void resize_and_move_rect(struct vo_w32_state *w32, RECT *rc, int w, int h)
@@ -1289,12 +1315,27 @@ static void handle_sizing(struct vo_w32_state *w32, int edge, RECT *rc)
     if (!drag_l && !drag_r && !drag_t && !drag_b)
         return;
 
-    bool keep_aspect = w32->opts->keepaspect && w32->opts->keepaspect_window;
-    if (!keep_aspect || !w32->o_dwidth || !w32->o_dheight)
-        return;
-
     RECT wb = {0};
     add_window_borders(w32, w32->window, &wb, IsMaximized(w32->window));
+
+    int min_w = 0, min_h = 0;
+    get_min_size(w32, w32->o_dwidth, w32->o_dheight, &min_w, &min_h);
+
+    bool keep_aspect = w32->opts->keepaspect && w32->opts->keepaspect_window;
+    if (!keep_aspect || !w32->o_dwidth || !w32->o_dheight) {
+        LONG w = MPMAX(rect_w(*rc), min_w + rect_w(wb));
+        LONG h = MPMAX(rect_h(*rc), min_h + rect_h(wb));
+        if (drag_l)
+            rc->left = rc->right - w;
+        else
+            rc->right = rc->left + w;
+        if (drag_t)
+            rc->top = rc->bottom - h;
+        else
+            rc->bottom = rc->top + h;
+        return;
+    }
+
     // WM_GETMINMAXINFO should be always sent before any WM_SIZING.
     mp_assert(w32->max_track_size.x && w32->max_track_size.y);
     LONG max_w = w32->max_track_size.x - rect_w(wb);
@@ -1312,6 +1353,10 @@ static void handle_sizing(struct vo_w32_state *w32, int edge, RECT *rc)
             c_h = max_h;
             c_w = c_h * w32->o_dwidth / w32->o_dheight;
         }
+    }
+    if (c_w < min_w || c_h < min_h) {
+        c_w = min_w;
+        c_h = min_h;
     }
     LONG w_w = c_w + rect_w(wb), w_h = c_h + rect_h(wb);
     if (drag_l || (!drag_r && w32->snapped_right))
@@ -1506,6 +1551,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
         adjust_working_area_for_extended_frame(w32, &r);
         mmi->ptMaxTrackSize = w32->max_track_size = (POINT){MPMAX(rect_w(r), mmi->ptMaxSize.x),
                                                             MPMAX(rect_h(r), mmi->ptMaxSize.y)};
+        int min_w, min_h;
+        if (get_min_size(w32, w32->o_dwidth, w32->o_dheight, &min_w, &min_h)) {
+            RECT min = {0, 0, min_w, min_h};
+            add_window_borders(w32, w32->window, &min, false);
+            mmi->ptMinTrackSize = (POINT){rect_w(min), rect_h(min)};
+        }
         break;
     }
     case WM_SIZING:
@@ -1979,6 +2030,13 @@ static void window_resize(struct vo_w32_state *w32)
     vo_calc_window_geometry(vo, w32->opts, &screen, &mon, w32->dpi_scale,
                             !w32->window_bounds_initialized || w32->force_pos,
                             &geo, &size_constraint);
+    // here, while the size still has the shape of the video
+    if (!w32->current_fs) {
+        int win_w = geo.win.x1 - geo.win.x0, win_h = geo.win.y1 - geo.win.y0;
+        clamp_min_size(w32, &win_w, &win_h);
+        geo.win.x1 = geo.win.x0 + win_w;
+        geo.win.y1 = geo.win.y0 + win_h;
+    }
     // Limit the minimum window size to prevent the window floating to different
     // position when our requested size is smaller than the system minimum.
     // C{X,Y}MIN values doesn't seem to be absolute minimum of window, but it's
@@ -2490,8 +2548,10 @@ static int gui_thread_control(struct vo_w32_state *w32, int request, void *arg)
     }
     case VOCTRL_SET_UNFS_WINDOW_SIZE: {
         int *s = arg;
+        int new_w = s[0], new_h = s[1];
 
-        resize_and_move_rect(w32, &w32->windowed_rect, s[0], s[1]);
+        clamp_min_size(w32, &new_w, &new_h);
+        resize_and_move_rect(w32, &w32->windowed_rect, new_w, new_h);
         fit_rect_on_screen(w32, &w32->windowed_rect);
 
          if (w32->current_fs)

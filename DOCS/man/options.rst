@@ -3722,7 +3722,7 @@ Window
     Do not let the window become smaller than the video fitted in this fraction
     of the screen width and height (default: 0.15), whether it is resized with
     the mouse, by ``--window-scale`` or by ``--geometry``. 0 removes the limit.
-    Only implemented on Wayland.
+    Implemented on Wayland and Windows.
 
 ``--window-scale=<factor>``
     Resize the video window to a multiple (or fraction) of the video size. This
