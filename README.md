@@ -22,22 +22,25 @@ It takes two forks, both on their `dlssg` branch:
 The interface is [ModernZ](https://github.com/Samillion/ModernZ), from the
 [s-brue/ModernZ](https://github.com/s-brue/ModernZ/tree/dlssg) fork. The fork
 uses green as its accent colour, hides the minimize, maximize and close symbols,
-and adds two buttons:
+shows a single row (play, seekbar, `FG`, window size) in small windows, and
+adds two buttons:
 
 | Button | Left click | Right click |
 |---|---|---|
-| window, on the left | switch window and video between 100% and 75% of the video size | back to 100% |
-| `FG`, on the right | like the `n` key: off, 2x ... 6x; green while on | off |
+| window, on the left | like the `c` key: window and video at 100%, 75%, 50%, 25% of the video size | back to 100% |
+| `FG`, on the right | like the `k` key: off, 2x ... 6x; green while on | off |
 
 The window and menu changes in mpv:
 
 * on Wayland, borderless windows show resize cursors at their edges, and the
   edges take priority over the interface;
-* on Wayland, the window does not go below 75% of the video size
-  (`--window-min-scale`, 0 to disable);
+* on Wayland, the window does not go below 15% of the screen, however it is
+  resized (`--window-min-screen`, 0 to disable);
 * menus and lists stay readable in small windows (`min_scale` option of the
   context menu and the console);
-* turning Frame Generation on or off keeps the window size.
+* turning Frame Generation on or off keeps the window size;
+* default keys: `Esc` quits, `F11` toggles full screen and `Alt+1` ... `Alt+4`
+  set the window size (`Alt+2` no longer doubles it).
 
 DLSS Frame Generation is meant for games, so what a game engine would provide is
 substituted: motion vectors come from NVIDIA hardware optical flow (cleaned up
@@ -125,7 +128,11 @@ mpv-dlssg video.mkv
 
 | Key | Action |
 |---|---|
-| `n` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
+| `k` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
+| `c` | rotate the window size: 100%, 75%, 50%, 25% (needs ModernZ) |
+| `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% |
+| `f` or `F11` | full screen |
+| `Esc` or `q` | quit |
 
 Factors the display cannot show are skipped.
 
@@ -134,7 +141,7 @@ mpv binding, in `input.conf`. There is also an on/off binding, `dlssg/toggle`,
 with no key by default:
 
 ```
-n    script-binding dlssg/cycle
+k    script-binding dlssg/cycle
 T    script-binding dlssg/toggle
 ```
 
@@ -162,7 +169,10 @@ mpv-dlssg --hwdec=vulkan --vf=dlssg_vulkan=factor=4 video.mkv
 * 6x has been tested for performance (3840x1606 at 144 fps on an RTX 5080 with
   no dropped frames), not evaluated for quality.
 * Software decoded video is not supported.
-* HDR video is untested.
+* HDR: on Linux, HDR10 (PQ, BT.2020) keeps 10 bits, its transfer function and
+  metadata up to the display. It was tested with a clip converted from SDR, so
+  the picture quality on real HDR material has not been judged. Dolby Vision,
+  HDR10+ and HLG are untested.
 
 ## License
 
