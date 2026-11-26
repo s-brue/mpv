@@ -79,8 +79,8 @@ make windows MSVC=$HOME/msvc
 ```
 
 The first build compiles a cross toolchain and every dependency, and takes long.
-This build has not been tested on real Windows yet. Like the `.tbz`, it is for
-your own use: **do not redistribute it.**
+It has been tried under Proton, but **not on real Windows yet**. Like the `.tbz`,
+it is for your own use: **do not redistribute it.**
 
 ### Other distributions
 
