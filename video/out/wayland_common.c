@@ -379,12 +379,13 @@ static uint32_t pointer_cursor_shape(struct vo_wayland_state *wl)
     }
 }
 
-// Smallest window --window-min-scale allows, in buffer pixels.
+// Smallest window --window-min-screen allows, in buffer pixels: the video
+// fitted in that fraction of the screen.
 static bool get_min_size(struct vo_wayland_state *wl, int *width, int *height)
 {
     struct vo *vo = wl->vo;
-    double scale = wl->opts->window_min_scale;
-    if (scale <= 0 || !vo->params || !wl->current_output)
+    double fraction = wl->opts->window_min_screen;
+    if (fraction <= 0 || !vo->params || !wl->current_output)
         return false;
 
     int d_w, d_h;
@@ -394,10 +395,9 @@ static bool get_min_size(struct vo_wayland_state *wl, int *width, int *height)
     if (d_w <= 0 || d_h <= 0)
         return false;
 
-    // for a video larger than the screen, the fraction is of what fits on it
     struct mp_rect screen = wl->current_output->geometry;
-    double fit = MPMIN((double)mp_rect_w(screen) / d_w, (double)mp_rect_h(screen) / d_h);
-    scale *= MPMIN(fit, 1.0);
+    double scale = fraction * MPMIN((double)mp_rect_w(screen) / d_w,
+                                    (double)mp_rect_h(screen) / d_h);
     *width = lround(d_w * scale);
     *height = lround(d_h * scale);
     return true;

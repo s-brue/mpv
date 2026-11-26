@@ -59,7 +59,7 @@ typedef struct mp_vo_opts {
     struct m_geometry autofit_larger;
     struct m_geometry autofit_smaller;
     double window_scale;
-    double window_min_scale;
+    double window_min_screen;
 
     bool auto_window_resize;
     bool recenter;

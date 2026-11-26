@@ -3718,12 +3718,11 @@ Window
             (depending on the video aspect ratio, the width or height will be
             larger than 500 in order to keep the aspect ratio the same).
 
-``--window-min-scale=<factor>``
-    Do not let the window become smaller than this fraction of the video size
-    (default: 0.75), whether it is resized by dragging, by ``--window-scale``
-    or by ``--geometry``. For a video larger than the screen, it is a fraction
-    of the largest size that fits on it. 0 removes the limit. Only implemented
-    on Wayland.
+``--window-min-screen=<fraction>``
+    Do not let the window become smaller than the video fitted in this fraction
+    of the screen width and height (default: 0.15), whether it is resized with
+    the mouse, by ``--window-scale`` or by ``--geometry``. 0 removes the limit.
+    Only implemented on Wayland.
 
 ``--window-scale=<factor>``
     Resize the video window to a multiple (or fraction) of the video size. This
