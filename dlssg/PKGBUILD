@@ -14,14 +14,16 @@ pkgdesc='mpv with NVIDIA DLSS Frame Generation (2x-6x)'
 arch=(x86_64)
 url='https://github.com/s-brue/mpv'
 license=(GPL-3.0-or-later LicenseRef-NVIDIA-RTX-SDK)
+provides=(mpv-dlssg)
+conflicts=(mpv-dlssg)
 _prefix=/opt/mpv-dlssg
 _dlss_tag=v310.9.16
 
 depends=(
-  alsa-lib bzip2 dav1d fontconfig freetype2 fribidi gnutls harfbuzz hicolor-icon-theme
+  alsa-lib bzip2 curl dav1d fontconfig freetype2 fribidi gnutls harfbuzz
   lame lcms2 libarchive libass libbluray libcaca libcdio libcdio-paranoia libdisplay-info
   libdrm libdvdnav libdvdread libgl libjpeg-turbo libjxl libpipewire libplacebo libpulse
-  libsixel libsoxr libssh libva libvdpau libvorbis libvpx libwebp libx11 libxext libxfixes
+  libsixel libsoxr libssh libva libvdpau libvorbis libvpx libwebp libx11 libxcb libxext libxfixes
   libxkbcommon libxml2 libxpresent libxrandr libxss libxv luajit mesa nvidia-utils opus
   rubberband sndio svt-av1 uchardet vapoursynth vulkan-icd-loader wayland x264 x265 zimg zlib
 )
@@ -39,9 +41,11 @@ source=(
 sha256sums=(SKIP SKIP SKIP)
 
 pkgver() {
-  cd mpv
-  printf 'r%s.%s.f%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)" \
-    "$(git -C ../FFmpeg rev-parse --short HEAD)"
+  local repo
+  for repo in mpv FFmpeg; do
+    printf 'r%s.%s.' "$(git -C $repo rev-list --count HEAD)" \
+      "$(git -C $repo rev-parse --short HEAD)"
+  done | sed 's/\.$//'
 }
 
 build() {
