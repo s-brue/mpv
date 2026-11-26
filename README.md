@@ -3,8 +3,7 @@
 # mpv with DLSS Frame Generation
 
 This is a fork of [mpv](https://github.com/mpv-player/mpv) that multiplies the
-frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation. It is
-developed on Linux; there is also an experimental Windows build.
+frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation on Linux.
 
 For everything about mpv itself (usage, system requirements, compilation
 options, licensing, bug reporting) see the
@@ -65,27 +64,6 @@ make tbz
 
 The archive contains proprietary NVIDIA software linked with GPL code: it is for
 your own machines, **do not redistribute it** and do not upload it anywhere.
-
-### Windows (experimental, cross-built from Linux)
-
-`make windows` builds a `.zip` for Windows x86_64 in `dlssg/_out`, using
-[mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake) inside a
-Docker container. The NVIDIA NGX libraries only link with MSVC, so a small DLL
-is built first with [msvc-wine](https://github.com/mstorsjo/msvc-wine) (set
-`MSVC` to its directory).
-
-```sh
-cd dlssg
-make windows MSVC=$HOME/msvc
-```
-
-The first build compiles a cross toolchain and every dependency, and takes long.
-Unpack the `.zip` anywhere and drop a video on `mpv-dlssg.bat`.
-
-Under Proton, the filter gave the same output as on Linux, and `mpv.exe` played a
-3840x1606 H.264 clip at 6x on an RTX 5080 (HEVC could not be tried, as Proton
-does not decode it through Vulkan). It has **not been tested on real Windows
-yet**. Like the `.tbz`, it is for your own use: **do not redistribute it.**
 
 ### Other distributions
 
