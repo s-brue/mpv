@@ -11,6 +11,9 @@
 --   script-binding dlssg/toggle   on/off, at the last factor used (at first,
 --                                 the highest possible)
 --   script-binding dlssg/off
+--
+-- The factor in use (0 = off) is published in user-data/dlssg/factor, which the
+-- DLSS-G button of the ModernZ interface shows.
 
 local mp = require "mp"
 
@@ -27,8 +30,30 @@ local function active()
     return false
 end
 
+local function publish()
+    mp.set_property_native("user-data/dlssg/factor", target or 0)
+end
+
+-- Adding or removing the filter reconfigures the video output, and mpv would
+-- then size the window anew: keep the size it has, however it was set.
+local resize_setting, resize_timer = nil, nil
+local function keep_window_size()
+    if resize_timer then
+        resize_timer:kill()
+    else
+        resize_setting = mp.get_property("auto-window-resize")
+        mp.set_property("auto-window-resize", "no")
+    end
+    resize_timer = mp.add_timeout(3, function()
+        resize_timer = nil
+        mp.set_property("auto-window-resize", resize_setting)
+    end)
+end
+
 local function off()
     target = nil
+    publish()
+    if saved_hwdec or active() then keep_window_size() end
     if pending then pending:kill(); pending = nil end
     if active() then mp.commandv("vf", "remove", "@dlssg") end
     if saved_hwdec then
@@ -61,6 +86,8 @@ end
 
 local function apply(factor)
     target, last = factor, factor
+    publish()
+    keep_window_size()
     mp.osd_message(string.format("DLSS-G %dx", factor), 3)
 
     -- Still waiting for the decoder: the timer picks up the new target.
@@ -139,6 +166,7 @@ mp.observe_property("vf", "native", function()
     if target and not pending and not active() then off() end
 end)
 
+publish()
 mp.add_key_binding("n", "cycle", cycle)
 mp.add_key_binding(nil, "toggle", toggle)
 mp.add_key_binding(nil, "off", off)
