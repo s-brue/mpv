@@ -3,7 +3,8 @@
 # mpv with DLSS Frame Generation
 
 This is a fork of [mpv](https://github.com/mpv-player/mpv) that multiplies the
-frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation on Linux.
+frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation. It is
+developed on Linux; there is also an experimental Windows build.
 
 For everything about mpv itself (usage, system requirements, compilation
 options, licensing, bug reporting) see the
@@ -43,7 +44,7 @@ cd mpv/dlssg
 makepkg -si
 ```
 
-The DLSS SDK is large (about 1.6 GB).
+The DLSS SDK is large: about 220 MB to download, 1.6 GB once checked out.
 
 To build from local clones instead:
 
@@ -79,17 +80,43 @@ make windows MSVC=$HOME/msvc
 ```
 
 The first build compiles a cross toolchain and every dependency, and takes long.
-It has been tried under Proton, but **not on real Windows yet**. Like the `.tbz`,
-it is for your own use: **do not redistribute it.**
+Unpack the `.zip` anywhere and drop a video on `mpv-dlssg.bat`.
+
+Under Proton, the filter gave the same output as on Linux, and `mpv.exe` played a
+3840x1606 H.264 clip at 6x on an RTX 5080 (HEVC could not be tried, as Proton
+does not decode it through Vulkan). It has **not been tested on real Windows
+yet**. Like the `.tbz`, it is for your own use: **do not redistribute it.**
 
 ### Other distributions
 
 Follow `build()` and `package()` in the [`PKGBUILD`](dlssg/PKGBUILD). In short:
 configure FFmpeg with a private `--prefix`, `--enable-nonfree --enable-libngx`
 and the `include` and `lib/Linux_x86_64` directories of the DLSS SDK in the
-compiler and linker flags; build mpv against that FFmpeg; run it with
-`DLSSG_LIB_PATH` pointing to the directory that holds
-`libnvidia-ngx-dlssg.so`.
+compiler and linker flags; build mpv against that FFmpeg.
+
+At run time the filter needs the `libnvidia-ngx-dlssg.so.<version>` library of
+the SDK. It looks for it in the directory of the program, then in its `ngx` and
+`../lib/ngx` directories. If it is somewhere else, set `DLSSG_LIB_PATH` (or the
+`libpath` option of the filter) to that directory.
+
+## Publishing on the AUR
+
+This is for whoever maintains the `mpv-dlssg-git` package. The AUR takes only the
+recipe, so nothing built is ever uploaded: whoever installs the package compiles
+it on their own machine.
+
+```sh
+cd dlssg
+make aur-test     # build in a clean Arch container (needs Docker)
+make aur          # write PKGBUILD and .SRCINFO into _aur/ and commit them
+make aur-publish  # push that commit to the AUR
+```
+
+Publishing needs an AUR account with your SSH public key. The commit carries
+your git name and address, and `MAINTAINER="Name <address>"` adds the maintainer
+line to the `PKGBUILD`; all of that is public. The package builds what is on the
+`dlssg` branches on GitHub, not your local clones, so push those first. Being a
+`-git` package, it only needs `make aur` again when the recipe changes.
 
 ## Usage
 
