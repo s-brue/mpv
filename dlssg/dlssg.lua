@@ -1,20 +1,22 @@
 -- DLSS Frame Generation controls for the dlssg_vulkan filter.
 --
 --   n    rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
---   F7   toggle, at the last factor used (at first, the highest possible)
 --
 -- Factors the display cannot show are skipped.
 --
 -- Like any other mpv binding, these can be changed in input.conf:
 --   n    script-binding dlssg/cycle
---   F7   script-binding dlssg/toggle
---        script-binding dlssg/off      (no key by default)
+--
+-- Also available, with no key by default:
+--   script-binding dlssg/toggle   on/off, at the last factor used (at first,
+--                                 the highest possible)
+--   script-binding dlssg/off
 
 local mp = require "mp"
 
 local MAX_FACTOR = 6
 local target = nil      -- requested factor, nil = off
-local last = nil        -- factor F7 comes back to
+local last = nil        -- factor the toggle comes back to
 local saved_hwdec = nil -- set while the filter is in use
 local pending = nil     -- timer waiting for the Vulkan decoder
 
@@ -138,5 +140,5 @@ mp.observe_property("vf", "native", function()
 end)
 
 mp.add_key_binding("n", "cycle", cycle)
-mp.add_key_binding("F7", "toggle", toggle)
+mp.add_key_binding(nil, "toggle", toggle)
 mp.add_key_binding(nil, "off", off)

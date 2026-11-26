@@ -69,16 +69,16 @@ mpv-dlssg video.mkv
 | Key | Action |
 |---|---|
 | `n` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
-| `F7` | toggle DLSS-G at the last factor used (at first, the highest possible) |
 
 Factors the display cannot show are skipped.
 
 Your usual mpv configuration is used, and the keys are changed like any other
-mpv binding, in `input.conf`:
+mpv binding, in `input.conf`. There is also an on/off binding, `dlssg/toggle`,
+with no key by default:
 
 ```
 n    script-binding dlssg/cycle
-F7   script-binding dlssg/toggle
+T    script-binding dlssg/toggle
 ```
 
 The filter can also be given directly, and it takes
