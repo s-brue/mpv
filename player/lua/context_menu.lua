@@ -28,6 +28,7 @@ local options = {
     background_alpha = 0,
     corner_radius = 5,
     scale_with_window = "auto",
+    min_scale = 1.2,
     focused_color = "#222222",
     focused_back_color = "#FFFFFF",
     disabled_color = "#555555",
@@ -87,11 +88,13 @@ end
 local function scale_factor()
     local osd_height = mp.get_property_native("osd-height")
 
+    local hidpi_scale = mp.get_property_native("display-hidpi-scale", 1)
     if should_scale() and osd_height > 0 then
-        return osd_height / 720
+        -- following a small window down would make the menu unreadable
+        return math.max(osd_height / 720, options.min_scale * hidpi_scale)
     end
 
-    return mp.get_property_native("display-hidpi-scale", 1)
+    return hidpi_scale
 end
 
 local function get_scaled_osd_dimensions()
@@ -355,7 +358,7 @@ local function add_submenu(ass, menu, level, style, background_style)
         non_separator_item_index = 2
 
         local i = 1
-        local per_page = (menu.height - options.padding_y * 2) / get_line_height() - 2
+        local per_page = math.floor((menu.height - options.padding_y) / line_height) - 2
         for _, item in ipairs(menu.items) do
             if item.type ~= "separator" then
                 if i < (menu.page - 1) * per_page then
@@ -382,7 +385,8 @@ local function add_submenu(ass, menu, level, style, background_style)
             ass:rect_cw(0, -1, menu.width, 0)
             ass:draw_stop()
         else
-            local add_down_arrow = i < #menu.items and item_y + line_height > menu.y + menu.height
+            local add_down_arrow = i < #menu.items and
+                                   item_y + 1.5 * line_height > menu.y + menu.height + 0.01
             if add_down_arrow then
                 item = { title = '▾', page_offset = 1 }
             end

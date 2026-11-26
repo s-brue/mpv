@@ -42,6 +42,7 @@ local script_opts = {
     margin_x = -1,
     margin_y = -1,
     scale_with_window = "auto",
+    min_scale = 1.2,
     focused_color = "#222222",
     focused_back_color = "#FFFFFF",
     match_color = "#0088FF",
@@ -300,11 +301,13 @@ local function should_scale()
 end
 
 local function scale_factor()
+    local hidpi_scale = get_property_cached("display-hidpi-scale", 1)
     if should_scale() and osd_height > 0 then
-        return osd_height / 720
+        -- following a small window down would make the text unreadable
+        return math.max(osd_height / 720, opts.min_scale * hidpi_scale)
     end
 
-    return get_property_cached("display-hidpi-scale", 1)
+    return hidpi_scale
 end
 
 local function terminal_output()

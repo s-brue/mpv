@@ -115,6 +115,12 @@ Configurable Options
     When sizes aren't scaled with the window, they are scaled by
     ``display-hidpi-scale``.
 
+``min_scale``
+    Default: 1.2
+
+    When scaling with the window height, never go below ``display-hidpi-scale``
+    multiplied by this, to stay readable in small windows. 0 disables the limit.
+
 ``focused_color``
     Default: ``#222222``
 
