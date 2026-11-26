@@ -68,7 +68,7 @@ mpv-dlssg video.mkv
 
 | Key | Action |
 |---|---|
-| `g` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
+| `n` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
 | `F7` | toggle DLSS-G at the last factor used (at first, the highest possible) |
 
 Factors the display cannot show are skipped.
@@ -77,12 +77,9 @@ Your usual mpv configuration is used, and the keys are changed like any other
 mpv binding, in `input.conf`:
 
 ```
-g    script-binding dlssg/cycle
+n    script-binding dlssg/cycle
 F7   script-binding dlssg/toggle
 ```
-
-Binding `g` hides mpv's `g-...` menu sequences (`g-p`, `g-s`, ...). If you want
-those back, bind `dlssg/cycle` to another key and add `g ignore`.
 
 The filter can also be given directly, and it takes
 [options](https://github.com/s-brue/FFmpeg/blob/dlssg/doc/filters.texi)
