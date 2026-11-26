@@ -20,11 +20,11 @@ cd /work
 git -C mpv-winbuild-cmake checkout -q -f "$WINBUILD_COMMIT"
 python /scripts/use-forks.py mpv-winbuild-cmake
 
-# an interrupted build can leave a half applied patch that blocks the next one
-for am in src/*/.git/rebase-apply; do
-    if [ -d "$am" ]; then
-        git -C "${am%/.git/rebase-apply}" am --abort || rm -rf "$am"
-    fi
+# Patches cannot be applied twice, and an interrupted build leaves the sources
+# of patched packages in a state that blocks the next one: fetch those again.
+for recipe in $(grep -l PATCH_COMMAND mpv-winbuild-cmake/packages/*.cmake); do
+    package=$(basename "$recipe" .cmake)
+    rm -rf "src/$package" "build/packages/$package-prefix"
 done
 
 # sources of the forks are always fetched again
