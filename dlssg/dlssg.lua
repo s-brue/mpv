@@ -167,6 +167,74 @@ mp.observe_property("vf", "native", function()
 end)
 
 publish()
+-- Window placement. The window ends up in the middle of the screen:
+--
+--   Alt+1 .. Alt+4    100, 75, 50, 25 % of the video size
+--   Ctrl+1            full screen
+--   Ctrl+2 .. Ctrl+4  75, 50, 25 % of the screen size
+--
+-- The same from other scripts or input.conf:
+--   script-message dlssg-window video|screen <fraction>
+
+local centre_timer = nil
+
+local function centre()
+    if mp.get_property("platform") == "windows" or os.getenv("XDG_SESSION_TYPE") == "x11" then
+        mp.set_property("geometry", "+50%+50%")
+        return
+    end
+    -- Wayland does not let a program place its own window. KWin can centre the
+    -- active one, which is only ours while it has the focus.
+    if (os.getenv("XDG_CURRENT_DESKTOP") or ""):find("KDE") and mp.get_property_native("focused") then
+        mp.command_native_async({
+            name = "subprocess", playback_only = false, capture_stdout = true, capture_stderr = true,
+            args = {"busctl", "--user", "call", "org.kde.kglobalaccel", "/component/kwin",
+                    "org.kde.kglobalaccel.Component", "invokeShortcut", "s", "Window Move Center"},
+        }, function() end)
+    end
+end
+
+local function place_window(base, fraction)
+    local function apply()
+        local scale = fraction
+        if base == "screen" then
+            -- the video fitted in that fraction of the screen
+            local width, height = mp.get_property_number("dwidth"), mp.get_property_number("dheight")
+            local screen_w = mp.get_property_number("display-width")
+            local screen_h = mp.get_property_number("display-height")
+            if not (width and height and screen_w and screen_h) then return end
+            scale = fraction * math.min(screen_w / width, screen_h / height)
+        end
+        -- a geometry set at startup would be applied again, over this size
+        mp.set_property("geometry", "")
+        mp.set_property_number("window-scale", scale)
+        if centre_timer then centre_timer:kill() end
+        centre_timer = mp.add_timeout(0.3, centre) -- once resized
+    end
+    if mp.get_property_native("fullscreen") or mp.get_property_native("window-maximized") then
+        mp.set_property_native("fullscreen", false)
+        mp.set_property_native("window-maximized", false)
+        mp.add_timeout(0.3, apply) -- once the window has left that state
+    else
+        apply()
+    end
+end
+
+mp.register_script_message("dlssg-window", function(base, fraction)
+    fraction = tonumber(fraction)
+    if (base == "video" or base == "screen") and fraction and fraction > 0 then
+        place_window(base, fraction)
+    end
+end)
+
+for key, fraction in ipairs({1, 0.75, 0.5, 0.25}) do
+    mp.add_key_binding("Alt+" .. key, "window-video-" .. key, function() place_window("video", fraction) end)
+    if key > 1 then
+        mp.add_key_binding("Ctrl+" .. key, "window-screen-" .. key, function() place_window("screen", fraction) end)
+    end
+end
+mp.add_key_binding("Ctrl+1", "window-screen-1", function() mp.set_property_native("fullscreen", true) end)
+
 mp.add_key_binding("k", "cycle", cycle)
 mp.add_key_binding(nil, "toggle", toggle)
 mp.add_key_binding(nil, "off", off)

@@ -130,11 +130,15 @@ mpv-dlssg video.mkv
 |---|---|
 | `k` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
 | `c` | rotate the window size: 100%, 75%, 50%, 25% (needs ModernZ) |
-| `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% |
+| `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% of the video size, centred |
+| `Ctrl+1` | full screen |
+| `Ctrl+2` ... `Ctrl+4` | window at 75%, 50%, 25% of the screen size, centred |
 | `f` or `F11` | full screen |
 | `Esc` or `q` | quit |
 
-Factors the display cannot show are skipped.
+Factors the display cannot show are skipped. The window button and `c` centre the
+window too. Wayland does not let a program place its window, so there centring
+needs KDE, where KWin is asked to do it.
 
 Your usual mpv configuration is used, and the keys are changed like any other
 mpv binding, in `input.conf`. There is also an on/off binding, `dlssg/toggle`,
