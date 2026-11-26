@@ -17,7 +17,27 @@ It takes two forks, both on their `dlssg` branch:
 | Repository | Change |
 |---|---|
 | [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan` filter, which does the work |
-| [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, plus the files in [`dlssg/`](dlssg) |
+| [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, a few window and menu changes (below), plus the files in [`dlssg/`](dlssg) |
+
+The interface is [ModernZ](https://github.com/Samillion/ModernZ), from the
+[s-brue/ModernZ](https://github.com/s-brue/ModernZ/tree/dlssg) fork. The fork
+uses green as its accent colour, hides the minimize, maximize and close symbols,
+and adds two buttons:
+
+| Button | Left click | Right click |
+|---|---|---|
+| window, on the left | switch window and video between 100% and 75% of the video size | back to 100% |
+| `FG`, on the right | like the `n` key: off, 2x ... 6x; green while on | off |
+
+The window and menu changes in mpv:
+
+* on Wayland, borderless windows show resize cursors at their edges, and the
+  edges take priority over the interface;
+* on Wayland, the window does not go below 75% of the video size
+  (`--window-min-scale`, 0 to disable);
+* menus and lists stay readable in small windows (`min_scale` option of the
+  context menu and the console);
+* turning Frame Generation on or off keeps the window size.
 
 DLSS Frame Generation is meant for games, so what a game engine would provide is
 substituted: motion vectors come from NVIDIA hardware optical flow (cleaned up
@@ -33,7 +53,7 @@ constant and the camera is fixed.
 
 ## Installation (Arch Linux)
 
-The [`dlssg/PKGBUILD`](dlssg/PKGBUILD) recipe downloads both forks and the
+The [`dlssg/PKGBUILD`](dlssg/PKGBUILD) recipe downloads the forks and the
 [NVIDIA DLSS SDK](https://github.com/NVIDIA/DLSS), builds them and installs
 everything into `/opt/mpv-dlssg`. The system `mpv` and `ffmpeg` are not touched.
 
@@ -48,7 +68,8 @@ The DLSS SDK is large: about 220 MB to download, 1.6 GB once checked out.
 To build from local clones instead:
 
 ```sh
-FFMPEG_REPO=file://$HOME/repos/FFmpeg MPV_REPO=file://$HOME/repos/mpv makepkg -si
+FFMPEG_REPO=file://$HOME/repos/FFmpeg MPV_REPO=file://$HOME/repos/mpv \
+  MODERNZ_REPO=file://$HOME/repos/ModernZ makepkg -si
 ```
 
 ### A .tbz archive
@@ -116,6 +137,14 @@ with no key by default:
 n    script-binding dlssg/cycle
 T    script-binding dlssg/toggle
 ```
+
+`mpv-dlssg` loads ModernZ unless your configuration already has an interface of
+its own in `scripts/` (uosc, another OSC, or your own copy of ModernZ), or
+`MPV_DLSSG_OSC=no` is set. It is configured as usual, in
+`script-opts/modernz.conf`; its
+[documentation](https://github.com/Samillion/ModernZ#customization) lists the
+options. Thumbnails need [thumbfast](https://github.com/po5/thumbfast), which is
+not included.
 
 The filter can also be given directly, and it takes
 [options](https://github.com/s-brue/FFmpeg/blob/dlssg/doc/filters.texi)
