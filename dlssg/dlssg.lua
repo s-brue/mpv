@@ -1,17 +1,25 @@
 -- DLSS Frame Generation controls for the dlssg_vulkan filter.
 --
---   F7         toggle, at the highest factor the display can show
---   Shift+F7   cycle the factor (2x .. 6x)
+--   g    rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
+--   F7   toggle, at the last factor used (at first, the highest possible)
 --
--- Bindings in input.conf take precedence; the script bindings are named
--- dlssg/toggle and dlssg/cycle.
+-- Factors the display cannot show are skipped.
+--
+-- Like any other mpv binding, these can be changed in input.conf:
+--   g    script-binding dlssg/cycle
+--   F7   script-binding dlssg/toggle
+--        script-binding dlssg/off      (no key by default)
+--
+-- Binding "g" hides mpv's "g-..." menu sequences (g-p, g-s, ...). To get them
+-- back, bind DLSS-G to another key and add "g ignore" to input.conf.
 
 local mp = require "mp"
 
 local MAX_FACTOR = 6
-local factor_choice = nil -- picked with Shift+F7; nil = highest possible
-local saved_hwdec = nil
-local pending = nil
+local target = nil      -- requested factor, nil = off
+local last = nil        -- factor F7 comes back to
+local saved_hwdec = nil -- set while the filter is in use
+local pending = nil     -- timer waiting for the Vulkan decoder
 
 local function active()
     for _, f in ipairs(mp.get_property_native("vf") or {}) do
@@ -21,6 +29,7 @@ local function active()
 end
 
 local function off()
+    target = nil
     if pending then pending:kill(); pending = nil end
     if active() then mp.commandv("vf", "remove", "@dlssg") end
     if saved_hwdec then
@@ -39,7 +48,10 @@ local function limit()
     return max, source
 end
 
-local function add(factor, source)
+local function add_filter()
+    local source = mp.get_property_number("container-fps") or 0
+    if active() then mp.commandv("vf", "remove", "@dlssg") end
+    local factor = target
     if mp.commandv("vf", "add", "@dlssg:dlssg_vulkan=factor=" .. factor) then
         mp.osd_message(string.format("DLSS-G %dx (%.2f fps)", factor, source * factor), 3)
     else
@@ -48,28 +60,23 @@ local function add(factor, source)
     end
 end
 
-local function on(factor)
-    local max, source = limit()
-    if not max then
-        mp.osd_message("DLSS-G: no video, or unknown frame rate")
+local function apply(factor)
+    target, last = factor, factor
+    mp.osd_message(string.format("DLSS-G %dx", factor), 3)
+
+    -- Still waiting for the decoder: the timer picks up the new target.
+    if pending then return end
+    if saved_hwdec then
+        add_filter()
         return
     end
-    if max < 2 then
-        mp.osd_message(string.format("DLSS-G: the video already runs at %.0f fps", source))
-        return
-    end
-    factor = math.min(factor or max, max)
 
     -- Do not stack it on top of another interpolator.
+    local others, found = {}, false
     for _, f in ipairs(mp.get_property_native("vf") or {}) do
-        if f.name == "vapoursynth" then mp.commandv("vf", "remove", "@" .. (f.label or "vapoursynth")) end
+        if f.name == "vapoursynth" then found = true else others[#others + 1] = f end
     end
-
-    if active() then
-        mp.commandv("vf", "remove", "@dlssg")
-        add(factor, source)
-        return
-    end
+    if found then mp.set_property_native("vf", others) end
 
     -- The filter needs Vulkan frames.
     saved_hwdec = mp.get_property("hwdec")
@@ -81,8 +88,42 @@ local function on(factor)
             mp.osd_message("DLSS-G: no Vulkan decoding for this video", 3)
             return
         end
-        add(factor, source)
+        add_filter()
     end)
+end
+
+-- Returns the highest usable factor, or nil after explaining why there is none.
+local function usable()
+    local max, source = limit()
+    if not max then
+        mp.osd_message("DLSS-G: no video, or unknown frame rate")
+    elseif max < 2 then
+        mp.osd_message(string.format("DLSS-G: the video already runs at %.0f fps", source))
+    else
+        return max
+    end
+end
+
+local function cycle()
+    local max = usable()
+    if not max then return end
+    local next_factor = target and target + 1 or 2
+    if next_factor > max then
+        off()
+        mp.osd_message("DLSS-G off")
+    else
+        apply(next_factor)
+    end
+end
+
+local function toggle()
+    if target then
+        off()
+        mp.osd_message("DLSS-G off")
+        return
+    end
+    local max = usable()
+    if max then apply(math.min(last or max, max)) end
 end
 
 -- mpv disables a filter that fails to initialise: go back and say so.
@@ -94,26 +135,11 @@ mp.register_event("log-message", function(e)
     end
 end)
 
-mp.add_key_binding("F7", "toggle", function()
-    if active() or pending then
-        off()
-        mp.osd_message("DLSS-G off")
-    else
-        on(factor_choice)
-    end
+-- The filter may be removed by someone else (another script, "vf" commands).
+mp.observe_property("vf", "native", function()
+    if target and not pending and not active() then off() end
 end)
 
-mp.add_key_binding("Shift+F7", "cycle", function()
-    local max = limit()
-    if not max or max < 2 then
-        on(nil)
-        return
-    end
-    local current = factor_choice and math.min(factor_choice, max) or max
-    if active() or pending then
-        current = current >= max and 2 or current + 1
-        if pending then off() end
-    end
-    factor_choice = current
-    on(current)
-end)
+mp.add_key_binding("g", "cycle", cycle)
+mp.add_key_binding("F7", "toggle", toggle)
+mp.add_key_binding(nil, "off", off)
