@@ -51,6 +51,20 @@ To build from local clones instead:
 FFMPEG_REPO=file://$HOME/repos/FFmpeg MPV_REPO=file://$HOME/repos/mpv makepkg -si
 ```
 
+### A .tbz archive
+
+`make tbz` builds the same package and turns it into a `.tbz` in `dlssg/_out`,
+to be unpacked on `/` (its `opt/mpv-dlssg/INSTALL.txt` explains how). It takes
+the same source overrides as above:
+
+```sh
+cd dlssg
+make tbz
+```
+
+The archive contains proprietary NVIDIA software linked with GPL code: it is for
+your own machines, **do not redistribute it** and do not upload it anywhere.
+
 ### Other distributions
 
 Follow `build()` and `package()` in the [`PKGBUILD`](dlssg/PKGBUILD). In short:
