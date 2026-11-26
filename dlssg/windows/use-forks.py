@@ -31,6 +31,10 @@ edit("mpv.cmake", [
     ("GIT_REPOSITORY https://github.com/mpv-player/mpv.git", source("MPV")),
     ('GIT_CLONE_FLAGS "--filter=tree:0"\n', ""),
     ("-Dpdf-build=enabled", "-Dpdf-build=disabled"),
+    # curl pulls in ngtcp2, which does not build against current OpenSSL;
+    # mpv still plays network streams through FFmpeg
+    ("        subrandr\n        libsixel\n        curl\n", "        subrandr\n        libsixel\n"),
+    ("-Dlibcurl=enabled", "-Dlibcurl=disabled"),
 ])
 path = os.path.join(packages, "mpv.cmake")
 with open(path) as f:
