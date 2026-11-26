@@ -36,6 +36,7 @@
 #include "osdep/poll_wrapper.h"
 #include "osdep/timer.h"
 #include "present_sync.h"
+#include "video/mp_image.h"
 #include "stream/stream.h"
 #include "video/out/gpu/video.h"
 #include "wayland_common.h"
@@ -213,6 +214,7 @@ struct vo_wayland_seat {
     struct vo_wayland_text_input *text_input;
     struct wp_cursor_shape_device_v1 *cursor_shape_device;
     uint32_t pointer_enter_serial;
+    uint32_t cursor_shape;
     uint32_t pointer_button_serial;
     uint32_t last_serial;
     struct xkb_keymap  *xkb_keymap;
@@ -356,6 +358,71 @@ static char *session_file(void *talloc_ctx, const char *session, struct vo *vo);
 static char *read_session_id(void *talloc_ctx, struct vo_wayland_state *wl, const char *path);
 #endif
 
+// Without server side decorations the window edges are resize zones.
+static uint32_t pointer_cursor_shape(struct vo_wayland_state *wl)
+{
+    enum xdg_toplevel_resize_edge edges;
+    if (wl->opts->border || wl->locked_size ||
+        !check_for_resize(wl, wl->opts->wl_edge_pixels_pointer, &edges))
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+
+    switch (edges) {
+    case XDG_TOPLEVEL_RESIZE_EDGE_TOP:          return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM:       return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_LEFT:         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_RIGHT:        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT:     return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT:    return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT:  return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE;
+    case XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT: return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE;
+    default:                                    return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    }
+}
+
+// Smallest window --window-min-scale allows, in buffer pixels.
+static bool get_min_size(struct vo_wayland_state *wl, int *width, int *height)
+{
+    struct vo *vo = wl->vo;
+    double scale = wl->opts->window_min_scale;
+    if (scale <= 0 || !vo->params || !wl->current_output)
+        return false;
+
+    int d_w, d_h;
+    mp_image_params_get_dsize(vo->params, &d_w, &d_h);
+    if ((vo->driver->caps & VO_CAP_ROTATE90) && vo->params->rotate % 180 == 90)
+        MPSWAP(int, d_w, d_h);
+    if (d_w <= 0 || d_h <= 0)
+        return false;
+
+    // for a video larger than the screen, the fraction is of what fits on it
+    struct mp_rect screen = wl->current_output->geometry;
+    double fit = MPMIN((double)mp_rect_w(screen) / d_w, (double)mp_rect_h(screen) / d_h);
+    scale *= MPMIN(fit, 1.0);
+    *width = lround(d_w * scale);
+    *height = lround(d_h * scale);
+    return true;
+}
+
+static void clamp_min_size(struct vo_wayland_state *wl, struct mp_rect *size)
+{
+    int width, height;
+    if (!get_min_size(wl, &width, &height))
+        return;
+    size->x1 = MPMAX(size->x1, size->x0 + width);
+    size->y1 = MPMAX(size->y1, size->y0 + height);
+}
+
+// Let the compositor enforce the limit during interactive resizes.
+static void update_min_size(struct vo_wayland_state *wl)
+{
+    int width = 0, height = 0;
+    if (get_min_size(wl, &width, &height)) {
+        width = lround(width / wl->scaling_factor);
+        height = lround(height / wl->scaling_factor);
+    }
+    xdg_toplevel_set_min_size(wl->xdg_toplevel, width, height);
+}
+
 /* Wayland listener boilerplate */
 static void pointer_handle_enter(void *data, struct wl_pointer *pointer,
                                  uint32_t serial, struct wl_surface *surface,
@@ -394,6 +461,10 @@ static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
 
     wl->mouse_x = handle_round(wl->scaling, wl_fixed_to_int(sx));
     wl->mouse_y = handle_round(wl->scaling, wl_fixed_to_int(sy));
+
+    if (wl->cursor_visible && s->cursor_shape_device &&
+        s->cursor_shape != pointer_cursor_shape(wl))
+        set_cursor_visibility(s, true);
 
     mp_input_set_mouse_pos(wl->vo->input_ctx, wl->mouse_x, wl->mouse_y,
                            wl->toplevel_configured);
@@ -435,8 +506,7 @@ static void pointer_handle_button(void *data, struct wl_pointer *wl_pointer,
         button = 0;
     }
     enum xdg_toplevel_resize_edge edges;
-    if (!mp_input_test_dragging(wl->vo->input_ctx, wl->mouse_x, wl->mouse_y) &&
-        !wl->locked_size && (button == MP_MBTN_LEFT) && (state == MP_KEY_STATE_DOWN) &&
+    if (!wl->locked_size && (button == MP_MBTN_LEFT) && (state == MP_KEY_STATE_DOWN) &&
         !wl->opts->border && check_for_resize(wl, wl->opts->wl_edge_pixels_pointer, &edges))
     {
         // Implement an edge resize zone if there are no decorations
@@ -1960,6 +2030,7 @@ static void apply_toplevel_config(struct vo_wayland_state *wl)
         wl->window_size.y0 = 0;
         wl->window_size.x1 = handle_round(wl->scaling, width);
         wl->window_size.y1 = handle_round(wl->scaling, height);
+        clamp_min_size(wl, &wl->window_size);
     }
     wl->geometry.x0 = 0;
     wl->geometry.y0 = 0;
@@ -3915,9 +3986,11 @@ static void set_cursor(struct vo_wayland_seat *s, struct wl_surface *cursor_surf
 
 static void set_cursor_shape(struct vo_wayland_seat *s)
 {
-    if (s->cursor_shape_device)
+    if (s->cursor_shape_device) {
+        s->cursor_shape = pointer_cursor_shape(s->wl);
         wp_cursor_shape_device_v1_set_shape(s->cursor_shape_device, s->pointer_enter_serial,
-                                            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+                                            s->cursor_shape);
+    }
 
     struct vo_wayland_tablet_tool *tablet_tool;
     wl_list_for_each(tablet_tool, &s->tablet_tool_list, link) {
@@ -4007,6 +4080,7 @@ static void set_geometry(struct vo_wayland_state *wl, bool resize)
     if (!wl->initial_size_hint)
         wl->window_size = (struct mp_rect){0, 0, vo->dwidth, vo->dheight};
     wl->initial_size_hint = false;
+    clamp_min_size(wl, &wl->window_size);
 
     if (resize) {
         if (!wl->locked_size)
@@ -4408,6 +4482,7 @@ int vo_wayland_control(struct vo *vo, int *events, int request, void *arg)
         wl->window_size.y0 = 0;
         wl->window_size.x1 = s[0];
         wl->window_size.y1 = s[1];
+        clamp_min_size(wl, &wl->window_size);
         wl->reconfigured = true;
         wl->override_surface_local = true;
         if (!wl->opts->fullscreen && !wl->tiled) {
@@ -4823,6 +4898,7 @@ bool vo_wayland_reconfig(struct vo *vo)
 
     if (wl->opts->auto_window_resize || !wl->geometry_configured)
         set_geometry(wl, false);
+    update_min_size(wl);
 
     if (wl->geometry_configured && wl->opts->auto_window_resize)
         wl->reconfigured = true;
