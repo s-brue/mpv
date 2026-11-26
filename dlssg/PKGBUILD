@@ -1,0 +1,90 @@
+# Builds mpv with NVIDIA DLSS Frame Generation into /opt/mpv-dlssg, next to the
+# system mpv and ffmpeg, which are not touched.
+#
+# The resulting package links the proprietary NVIDIA NGX SDK against GPL code:
+# build it for your own use, do not redistribute it.
+#
+# The sources can be overridden, e.g. to build from local clones:
+#   FFMPEG_REPO=file://$HOME/FFmpeg MPV_REPO=file://$HOME/mpv makepkg -si
+
+pkgname=mpv-dlssg-git
+pkgver=r0
+pkgrel=1
+pkgdesc='mpv with NVIDIA DLSS Frame Generation (2x-6x)'
+arch=(x86_64)
+url='https://github.com/s-brue/mpv'
+license=(GPL-3.0-or-later LicenseRef-NVIDIA-RTX-SDK)
+_prefix=/opt/mpv-dlssg
+_dlss_tag=v310.9.16
+
+depends=(
+  alsa-lib bzip2 dav1d fontconfig freetype2 fribidi gnutls harfbuzz hicolor-icon-theme
+  lame lcms2 libarchive libass libbluray libcaca libcdio libcdio-paranoia libdisplay-info
+  libdrm libdvdnav libdvdread libgl libjpeg-turbo libjxl libpipewire libplacebo libpulse
+  libsixel libsoxr libssh libva libvdpau libvorbis libvpx libwebp libx11 libxext libxfixes
+  libxkbcommon libxml2 libxpresent libxrandr libxss libxv luajit mesa nvidia-utils opus
+  rubberband sndio svt-av1 uchardet vapoursynth vulkan-icd-loader wayland x264 x265 zimg zlib
+)
+makedepends=(clang ffnvcodec-headers git meson nasm shaderc spirv-headers vulkan-headers wayland-protocols)
+# LTO off: the NGX SDK is a prebuilt static library
+options=(!lto !debug)
+
+source=(
+  "FFmpeg::git+${FFMPEG_REPO:-https://github.com/s-brue/FFmpeg.git}#branch=${FFMPEG_BRANCH:-dlssg}"
+  "mpv::git+${MPV_REPO:-https://github.com/s-brue/mpv.git}#branch=${MPV_BRANCH:-dlssg}"
+  "DLSS::git+${DLSS_REPO:-https://github.com/NVIDIA/DLSS.git}#tag=${_dlss_tag}"
+)
+sha256sums=(SKIP SKIP SKIP)
+
+pkgver() {
+  cd mpv
+  printf 'r%s.%s.f%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)" \
+    "$(git -C ../FFmpeg rev-parse --short HEAD)"
+}
+
+build() {
+  local dlss="$srcdir/DLSS" stage="$srcdir/stage"
+  local libdir="$stage$_prefix/lib"
+
+  mkdir -p build-ffmpeg && cd build-ffmpeg
+  "$srcdir/FFmpeg/configure" \
+    --prefix="$_prefix" --enable-shared --disable-static --disable-doc \
+    --extra-cflags="-I$dlss/include" --extra-cxxflags="-I$dlss/include" \
+    --extra-ldflags="-Wl,-rpath,$_prefix/lib -L$dlss/lib/Linux_x86_64" \
+    --enable-gpl --enable-version3 --enable-nonfree --enable-libngx \
+    --enable-cuda-llvm --enable-nvdec --enable-nvenc --enable-vulkan --enable-vapoursynth \
+    --enable-fontconfig --enable-gnutls --enable-lcms2 --enable-libass --enable-libbluray \
+    --enable-libdav1d --enable-libdrm --enable-libdvdnav --enable-libdvdread \
+    --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libjxl \
+    --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-libpulse \
+    --enable-libsoxr --enable-libssh --enable-libsvtav1 --enable-libvorbis --enable-libvpx \
+    --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libzimg
+  make
+  make DESTDIR="$stage" install
+
+  # build mpv against the FFmpeg still in the staging directory
+  cd "$srcdir"
+  rm -rf pc && mkdir pc
+  local f
+  for f in "$libdir"/pkgconfig/*.pc; do
+    sed "s|$_prefix|$stage$_prefix|g" "$f" > "pc/${f##*/}"
+  done
+  PKG_CONFIG_PATH="$srcdir/pc" \
+  LDFLAGS="$LDFLAGS -Wl,-rpath,$_prefix/lib -Wl,-rpath-link,$libdir" \
+  meson setup build-mpv mpv --wipe --prefix="$_prefix" --libdir=lib --buildtype=release \
+    -Dlua=luajit -Dvapoursynth=enabled -Dvulkan=enabled -Dlibmpv=false
+  meson compile -C build-mpv
+}
+
+package() {
+  cp -a "$srcdir/stage/." "$pkgdir/"
+  meson install -C build-mpv --destdir "$pkgdir"
+
+  # keep only what is needed at run time, and do not clash with the system mpv
+  rm -rf "$pkgdir$_prefix"/{include,lib/pkgconfig,share/applications,share/icons,share/zsh,share/bash-completion,share/fish}
+
+  install -Dm644 DLSS/lib/Linux_x86_64/rel/libnvidia-ngx-dlssg.so.* -t "$pkgdir$_prefix/lib/ngx/"
+  install -Dm644 mpv/dlssg/dlssg.lua -t "$pkgdir$_prefix/share/mpv-dlssg/"
+  install -Dm755 mpv/dlssg/mpv-dlssg -t "$pkgdir/usr/bin/"
+  install -Dm644 DLSS/LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/NVIDIA-RTX-SDK.txt"
+}

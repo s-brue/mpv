@@ -1,0 +1,5 @@
+#!/bin/sh
+# mpv with NVIDIA DLSS Frame Generation (the dlssg_vulkan filter).
+prefix=/opt/mpv-dlssg
+export DLSSG_LIB_PATH="${DLSSG_LIB_PATH:-$prefix/lib/ngx}"
+exec "$prefix/bin/mpv" --gpu-api=vulkan --script="$prefix/share/mpv-dlssg/dlssg.lua" "$@"

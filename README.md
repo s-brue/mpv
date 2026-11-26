@@ -1,222 +1,99 @@
 ![mpv logo](https://raw.githubusercontent.com/mpv-player/mpv.io/master/source/images/mpv-logo-128.png)
 
-# mpv
+# mpv with DLSS Frame Generation
 
+This is a fork of [mpv](https://github.com/mpv-player/mpv) that multiplies the
+frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation on Linux.
 
-* [External links](#external-links)
-* [Overview](#overview)
-* [System requirements](#system-requirements)
-* [Downloads](#downloads)
-* [Changelog](#changelog)
-* [Compilation](#compilation)
-* [Release cycle](#release-cycle)
-* [Bug reports](#bug-reports)
-* [Contributing](#contributing)
-* [License](#license)
-* [Contact](#contact)
+For everything about mpv itself (usage, system requirements, compilation
+options, licensing, bug reporting) see the
+**[README of the original project](https://github.com/mpv-player/mpv/blob/master/README.md)**.
+Do not report problems with this fork to the mpv developers.
 
+## What is changed
 
-## External links
+It takes two forks, both on their `dlssg` branch:
 
+| Repository | Change |
+|---|---|
+| [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan` filter, which does the work |
+| [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, plus the files in [`dlssg/`](dlssg) |
 
-* [Wiki](https://github.com/mpv-player/mpv/wiki)
-* [User Scripts](https://github.com/mpv-player/mpv/wiki/User-Scripts)
-* [FAQ][FAQ]
-* [Manual](https://mpv.io/manual/master/)
+DLSS Frame Generation is meant for games, so what a game engine would provide is
+substituted: motion vectors come from NVIDIA hardware optical flow (cleaned up
+with a forward/backward check, hole filling and a median filter), depth is
+constant and the camera is fixed.
 
+## Requirements
 
-## Overview
+* GeForce RTX 50 series for up to 6x. RTX 40 series should be limited to 2x
+  (untested).
+* A recent proprietary NVIDIA driver (developed with 620.73.04).
+* Vulkan hardware decoding of the video you play.
 
+## Installation (Arch Linux)
 
-**mpv** is a free (as in freedom) media player for the command line. It supports
-a wide variety of media file formats, audio and video codecs, and subtitle types.
+The [`dlssg/PKGBUILD`](dlssg/PKGBUILD) recipe downloads both forks and the
+[NVIDIA DLSS SDK](https://github.com/NVIDIA/DLSS), builds them and installs
+everything into `/opt/mpv-dlssg`. The system `mpv` and `ffmpeg` are not touched.
 
-There is a [FAQ][FAQ].
+```sh
+git clone --depth 1 --branch dlssg https://github.com/s-brue/mpv.git
+cd mpv/dlssg
+makepkg -si
+```
 
-Releases can be found on the [release list][releases].
+The DLSS SDK is large (about 1.6 GB).
 
-## System requirements
+To build from local clones instead:
 
-- A not too ancient Linux (usually, only the latest releases of distributions
-  are actively supported), Windows 10 1607 or later, or macOS 10.15 or later.
-- A somewhat capable CPU. Hardware decoding might help if the CPU is too slow to
-  decode video in realtime, but must be explicitly enabled with the `--hwdec`
-  option.
-- A not too crappy GPU. mpv's focus is not on power-efficient playback on
-  embedded or integrated GPUs (for example, hardware decoding is not even
-  enabled by default). Low power GPUs may cause issues like tearing, stutter,
-  etc. On such GPUs, it's recommended to use `--profile=fast` for smooth playback.
-  The main video output uses shaders for video rendering and scaling,
-  rather than GPU fixed function hardware. On Windows, you might want to make
-  sure the graphics drivers are current. In some cases, ancient fallback video
-  output methods can help (such as `--vo=xv` on Linux), but this use is not
-  recommended or supported.
+```sh
+FFMPEG_REPO=file://$HOME/repos/FFmpeg MPV_REPO=file://$HOME/repos/mpv makepkg -si
+```
 
-mpv does not go out of its way to break on older hardware or old, unsupported
-operating systems, but development is not done with them in mind. Keeping
-compatibility with such setups is not guaranteed. If things work, consider it
-a happy accident.
+### Other distributions
 
-## Downloads
+Follow `build()` and `package()` in the [`PKGBUILD`](dlssg/PKGBUILD). In short:
+configure FFmpeg with a private `--prefix`, `--enable-nonfree --enable-libngx`
+and the `include` and `lib/Linux_x86_64` directories of the DLSS SDK in the
+compiler and linker flags; build mpv against that FFmpeg; run it with
+`DLSSG_LIB_PATH` pointing to the directory that holds
+`libnvidia-ngx-dlssg.so`.
 
+## Usage
 
-For semi-official builds and third-party packages please see
-[mpv.io/installation](https://mpv.io/installation/).
+```sh
+mpv-dlssg video.mkv
+```
 
-## Changelog
+| Key | Action |
+|---|---|
+| `F7` | toggle DLSS-G, at the highest factor the display can show |
+| `Shift+F7` | cycle the factor |
 
+Your usual mpv configuration is used. Bindings for these keys in your
+`input.conf` take precedence over the ones of the script.
 
-There is no complete changelog; however, changes to the player core interface
-are listed in the [interface changelog][interface-changes].
+The filter can also be given directly, and it takes
+[options](https://github.com/s-brue/FFmpeg/blob/dlssg/doc/filters.texi)
+(search for `dlssg_vulkan`):
 
-Changes to the C API are documented in the [client API changelog][api-changes].
+```sh
+mpv-dlssg --hwdec=vulkan --vf=dlssg_vulkan=factor=4 video.mkv
+```
 
-The [release list][releases] has a summary of most of the important changes
-on every release.
+## Limitations
 
-Changes to the default key bindings are indicated in
-[restore-old-bindings.conf][restore-old-bindings].
-
-Changes to the default OSC bindings are indicated in
-[restore-osc-bindings.conf][restore-osc-bindings].
-
-## Compilation
-
-
-Compiling with full features requires development files for several
-external libraries. Mpv requires [meson](https://mesonbuild.com/index.html)
-to build. Meson can be obtained from your distro or PyPI.
-
-After creating your build directory (e.g. `meson setup build`), you can view a list
-of all the build options via `meson configure build`. You could also just simply
-look at the `meson_options.txt` file. Logs are stored in `meson-logs` within
-your build directory.
-
-Example:
-
-    meson setup build
-    meson compile -C build
-    meson install -C build
-
-For libplacebo, meson can use a git check out as a subproject for a convenient
-way to compile mpv if a sufficient libplacebo version is not easily available
-in the build environment. It will be statically linked with mpv. Example:
-
-    mkdir -p subprojects
-    git clone https://code.videolan.org/videolan/libplacebo.git --depth=1 --recursive subprojects/libplacebo
-
-Essential dependencies (incomplete list):
-
-- gcc or clang
-- X development headers (xlib, xrandr, xext, xscrnsaver, xpresent, libvdpau,
-  libGL, GLX, EGL, xv, ...)
-- Audio output development headers (libasound/ALSA, pulseaudio)
-- FFmpeg libraries (libavutil libavcodec libavformat libswscale libavfilter
-  and either libswresample or libavresample)
-- libplacebo
-- zlib
-- iconv (normally provided by the system libc)
-- libass (OSD, OSC, text subtitles)
-- Lua (optional, required for the OSC pseudo-GUI and youtube-dl integration)
-- libjpeg (optional, used for screenshots only)
-- uchardet (optional, for subtitle charset detection)
-- nvdec and vaapi libraries for hardware decoding on Linux (optional)
-
-Libass dependencies (when building libass):
-
-- gcc or clang, nasm on x86 and x86_64
-- fribidi, freetype, fontconfig development headers (for libass)
-- harfbuzz (required for correct rendering of combining characters, particularly
-  for correct rendering of non-English text on macOS, and Arabic/Indic scripts on
-  any platform)
-
-FFmpeg dependencies (when building FFmpeg):
-
-- gcc or clang, nasm on x86 and x86_64
-- OpenSSL or GnuTLS (have to be explicitly enabled when compiling FFmpeg)
-- libx264/libmp3lame/libfdk-aac if you want to use encoding (have to be
-  explicitly enabled when compiling FFmpeg)
-- For native DASH playback, FFmpeg needs to be built with --enable-libxml2
-  (although there are security implications, and DASH support has lots of bugs).
-- AV1 decoding support requires dav1d.
-- For good nvidia support on Linux, make sure nv-codec-headers is installed
-  and can be found by configure.
-
-Most of the above libraries are available in suitable versions on normal
-Linux distributions. For ease of compiling the latest git master of everything,
-you may wish to use the separately available build wrapper ([mpv-build][mpv-build])
-which first compiles FFmpeg libraries and libass, and then compiles the player
-statically linked against those.
-
-If you want to build a Windows binary, see [Windows compilation][windows_compilation].
-
-
-## Release cycle
-
-Once or twice a year, a release is cut off from the current development state
-and is assigned a 0.X.0 version number. No further maintenance is done, except
-in the event of security issues.
-
-The goal of releases is to make Linux distributions happy. Linux distributions
-are also expected to apply their own patches in case of bugs.
-
-Releases other than the latest release are unsupported and unmaintained.
-
-See the [release policy document][release-policy] for more information.
-
-## Bug reports
-
-
-Please use the [issue tracker][issue-tracker] provided by GitHub to send us bug
-reports or feature requests. Follow the template's instructions or the issue
-will likely be ignored or closed as invalid.
-
-Questions can be asked in the [discussions][discussions] or on IRC (see
-[Contact](#Contact) below).
-
-## Contributing
-
-
-Please read [contribute.md][contribute.md].
-
-For small changes you can just send us pull requests through GitHub. For bigger
-changes come and talk to us on IRC before you start working on them. It will
-make code review easier for both parties later on.
-
-You can check [the wiki](https://github.com/mpv-player/mpv/wiki/Stuff-to-do)
-or the [issue tracker](https://github.com/mpv-player/mpv/issues?q=is%3Aopen+is%3Aissue+label%3Ameta%3Afeature-request)
-for ideas on what you could contribute with.
+* Quality: in a hold-out test on one film, DLSS-G did clearly better than
+  FFmpeg's `fruc_vulkan`, but below the RIFE neural interpolator
+  (VMAF 62.7 against 68.4, at 2x). Expect artifacts around occlusions.
+* 6x has been tested for performance (3840x1606 at 144 fps on an RTX 5080 with
+  no dropped frames), not evaluated for quality.
+* Software decoded video is not supported.
+* HDR video is untested.
 
 ## License
 
-GPLv2 "or later" by default, LGPLv2.1 "or later" with `-Dgpl=false`.
-See [details.](https://github.com/mpv-player/mpv/blob/master/Copyright)
-
-## History
-
-This software is based on the MPlayer project. Before mpv existed as a project,
-the code base was briefly developed under the mplayer2 project. For details,
-see the [FAQ][FAQ].
-
-## Contact
-
-
-Most activity happens on the IRC channel and the GitHub issue tracker.
-
-- **GitHub issue tracker**: [issue tracker][issue-tracker] (report bugs here)
-- **Discussions**: [discussions][discussions]
-- **User IRC Channel**: `#mpv` on `irc.libera.chat`
-- **Developer IRC Channel**: `#mpv-devel` on `irc.libera.chat`
-
-[FAQ]: https://github.com/mpv-player/mpv/wiki/FAQ
-[releases]: https://github.com/mpv-player/mpv/releases
-[mpv-build]: https://github.com/mpv-player/mpv-build
-[issue-tracker]:  https://github.com/mpv-player/mpv/issues
-[discussions]: https://github.com/mpv-player/mpv/discussions
-[release-policy]: https://github.com/mpv-player/mpv/blob/master/DOCS/release-policy.md
-[windows_compilation]: https://github.com/mpv-player/mpv/blob/master/DOCS/compile-windows.md
-[interface-changes]: https://github.com/mpv-player/mpv/blob/master/DOCS/interface-changes.rst
-[api-changes]: https://github.com/mpv-player/mpv/blob/master/DOCS/client-api-changes.rst
-[restore-old-bindings]: https://github.com/mpv-player/mpv/blob/master/etc/restore-old-bindings.conf
-[restore-osc-bindings]: https://github.com/mpv-player/mpv/blob/master/etc/restore-osc-bindings.conf
-[contribute.md]: https://github.com/mpv-player/mpv/blob/master/DOCS/contribute.md
+mpv keeps its [license](Copyright). The DLSS SDK is proprietary NVIDIA software
+under its own license, and FFmpeg has to be built as `nonfree` to use it:
+**the resulting binaries must not be redistributed.** Build them for yourself.
