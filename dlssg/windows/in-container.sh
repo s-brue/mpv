@@ -25,7 +25,8 @@ rm -rf build/packages/ffmpeg-prefix build/packages/mpv-prefix src/ffmpeg src/mpv
 
 cmake -DTARGET_ARCH=x86_64-w64-mingw32 -DGCC_ARCH=x86-64 -DSINGLE_SOURCE_LOCATION=/work/src \
     -G Ninja -B build -S mpv-winbuild-cmake
-[ -x build/install/bin/x86_64-w64-mingw32-gcc ] || ninja -C build gcc
+# the x86_64-...-gcc wrapper exists from the start: look for the real compiler
+[ -x build/install/bin/cross-gcc ] || ninja -C build gcc
 
 prefix=/work/build/install/x86_64-w64-mingw32
 mkdir -p "$prefix/lib"
