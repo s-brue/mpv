@@ -1,11 +1,11 @@
 -- DLSS Frame Generation controls for the dlssg_vulkan filter.
 --
---   n    rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
+--   k    rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
 --
 -- Factors the display cannot show are skipped.
 --
 -- Like any other mpv binding, these can be changed in input.conf:
---   n    script-binding dlssg/cycle
+--   k    script-binding dlssg/cycle
 --
 -- Also available, with no key by default:
 --   script-binding dlssg/toggle   on/off, at the last factor used (at first,
@@ -167,6 +167,6 @@ mp.observe_property("vf", "native", function()
 end)
 
 publish()
-mp.add_key_binding("n", "cycle", cycle)
+mp.add_key_binding("k", "cycle", cycle)
 mp.add_key_binding(nil, "toggle", toggle)
 mp.add_key_binding(nil, "off", off)

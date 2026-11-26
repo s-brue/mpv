@@ -26,7 +26,7 @@ proprietary NVIDIA driver, and an up to date Arch Linux: the binaries link
 against the library versions of the day they were built.
 
 Install:    sudo tar -xjf $name -C /
-Run:        mpv-dlssg video.mkv      (n rotates 2x..6x/off)
+Run:        mpv-dlssg video.mkv      (k rotates 2x..6x/off)
 Uninstall:  sudo rm -rf /opt/mpv-dlssg /usr/bin/mpv-dlssg \\
                  /usr/share/fonts/mpv-dlssg /usr/share/licenses/mpv-dlssg-git
 

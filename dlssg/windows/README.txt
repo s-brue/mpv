@@ -5,7 +5,10 @@ proprietary NVIDIA NGX SDK, plus NVIDIA's nvngx_dlssg.dll.
 
 Unpack anywhere and drop a video on mpv-dlssg.bat.
 
-  n    rotate: off, 2x, 3x, 4x, 5x, 6x, off
+  k    rotate: off, 2x, 3x, 4x, 5x, 6x, off
+  c    window size: 100%, 75%, 50%, 25% (also Alt+1 .. Alt+4)
+  f    full screen (also F11)
+  q    quit (also Esc)
 
 Requires a GeForce RTX 50 series card for up to 6x (40 series: 2x, untested) and
 a recent NVIDIA driver.
