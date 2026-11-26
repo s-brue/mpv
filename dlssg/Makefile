@@ -4,6 +4,8 @@
 #   make package   Arch package (install it with pacman -U)
 #   make windows   .zip for Windows x86_64 in $(OUTDIR) (needs Docker and MSVC)
 #   make clean     remove the work and output directories
+#   make windows-installer  one setup .exe out of that .zip, for your own use
+#                           (EXTRA_CONFIG=dir adds your own configuration)
 #
 # Arch User Repository (only the recipe is uploaded, never anything built):
 #   make aur-test     build the package in a clean Arch container (needs Docker)
@@ -20,9 +22,9 @@ OUTDIR  ?= $(CURDIR)/_out
 export FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH DLSS_REPO
 export MODERNZ_REPO MODERNZ_BRANCH
 AURDIR ?= $(CURDIR)/_aur
-export WORKDIR OUTDIR MSVC AURDIR MAINTAINER
+export WORKDIR OUTDIR MSVC AURDIR MAINTAINER EXTRA_CONFIG ZIP
 
-.PHONY: tbz package windows aur aur-test aur-publish clean
+.PHONY: tbz package windows windows-installer aur aur-test aur-publish clean
 
 # makepkg rewrites pkgver in the PKGBUILD it runs, so it gets a copy
 package:
@@ -39,6 +41,9 @@ tbz: package
 
 windows:
 	./windows/build.sh
+
+windows-installer:
+	./windows/build-installer.sh
 
 aur:
 	./make-aur.sh prepare
