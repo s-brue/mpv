@@ -2,6 +2,7 @@
 #
 #   make tbz       self-contained archive in $(OUTDIR), to be unpacked on /
 #   make package   Arch package (install it with pacman -U)
+#   make windows   .zip for Windows x86_64 in $(OUTDIR) (needs Docker and MSVC)
 #   make clean     remove the work and output directories
 #
 # The sources can be overridden, e.g. to build from local clones:
@@ -10,8 +11,9 @@
 WORKDIR ?= $(CURDIR)/_work
 OUTDIR  ?= $(CURDIR)/_out
 export FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH DLSS_REPO
+export WORKDIR OUTDIR MSVC
 
-.PHONY: tbz package clean
+.PHONY: tbz package windows clean
 
 # makepkg rewrites pkgver in the PKGBUILD it runs, so it gets a copy
 package:
@@ -25,6 +27,9 @@ package:
 
 tbz: package
 	./make-tbz.sh "$(WORKDIR)"/*.pkg.tar* "$(OUTDIR)"
+
+windows:
+	./windows/build.sh
 
 clean:
 	rm -rf "$(WORKDIR)" "$(OUTDIR)"

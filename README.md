@@ -65,6 +65,23 @@ make tbz
 The archive contains proprietary NVIDIA software linked with GPL code: it is for
 your own machines, **do not redistribute it** and do not upload it anywhere.
 
+### Windows (experimental, cross-built from Linux)
+
+`make windows` builds a `.zip` for Windows x86_64 in `dlssg/_out`, using
+[mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake) inside a
+Docker container. The NVIDIA NGX libraries only link with MSVC, so a small DLL
+is built first with [msvc-wine](https://github.com/mstorsjo/msvc-wine) (set
+`MSVC` to its directory).
+
+```sh
+cd dlssg
+make windows MSVC=$HOME/msvc
+```
+
+The first build compiles a cross toolchain and every dependency, and takes long.
+This build has not been tested on real Windows yet. Like the `.tbz`, it is for
+your own use: **do not redistribute it.**
+
 ### Other distributions
 
 Follow `build()` and `package()` in the [`PKGBUILD`](dlssg/PKGBUILD). In short:
