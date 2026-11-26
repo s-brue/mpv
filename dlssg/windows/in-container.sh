@@ -20,6 +20,13 @@ cd /work
 git -C mpv-winbuild-cmake checkout -q -f "$WINBUILD_COMMIT"
 python /scripts/use-forks.py mpv-winbuild-cmake
 
+# an interrupted build can leave a half applied patch that blocks the next one
+for am in src/*/.git/rebase-apply; do
+    if [ -d "$am" ]; then
+        git -C "${am%/.git/rebase-apply}" am --abort || rm -rf "$am"
+    fi
+done
+
 # sources of the forks are always fetched again
 rm -rf build/packages/ffmpeg-prefix build/packages/mpv-prefix src/ffmpeg src/mpv
 
