@@ -13,10 +13,12 @@
 #
 # The sources can be overridden, e.g. to build from local clones:
 #   make tbz FFMPEG_REPO=file://$$HOME/FFmpeg MPV_REPO=file://$$HOME/mpv
+# (also MODERNZ_REPO, for the interface)
 
 WORKDIR ?= $(CURDIR)/_work
 OUTDIR  ?= $(CURDIR)/_out
 export FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH DLSS_REPO
+export MODERNZ_REPO MODERNZ_BRANCH
 AURDIR ?= $(CURDIR)/_aur
 export WORKDIR OUTDIR MSVC AURDIR MAINTAINER
 

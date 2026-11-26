@@ -27,7 +27,8 @@ against the library versions of the day they were built.
 
 Install:    sudo tar -xjf $name -C /
 Run:        mpv-dlssg video.mkv      (n rotates 2x..6x/off)
-Uninstall:  sudo rm -rf /opt/mpv-dlssg /usr/bin/mpv-dlssg /usr/share/licenses/mpv-dlssg-git
+Uninstall:  sudo rm -rf /opt/mpv-dlssg /usr/bin/mpv-dlssg \\
+                 /usr/share/fonts/mpv-dlssg /usr/share/licenses/mpv-dlssg-git
 
 Dependencies (pacman does not track them with this method):
 TEXT

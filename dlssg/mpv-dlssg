@@ -2,4 +2,15 @@
 # mpv with NVIDIA DLSS Frame Generation (the dlssg_vulkan filter).
 prefix=/opt/mpv-dlssg
 export DLSSG_LIB_PATH="${DLSSG_LIB_PATH:-$prefix/lib/ngx}"
-exec "$prefix/bin/mpv" --gpu-api=vulkan --script="$prefix/share/mpv-dlssg/dlssg.lua" "$@"
+
+# ModernZ interface, unless the configuration already has an interface of its
+# own (two of them would be drawn on top of each other) or MPV_DLSSG_OSC=no.
+config=${MPV_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/mpv}
+ui=--script=$prefix/share/mpv-dlssg/modernz.lua
+for script in "$config"/scripts/[Mm]odern* "$config"/scripts/*osc*; do
+    [ -e "$script" ] && ui=
+done
+[ "${MPV_DLSSG_OSC:-}" = no ] && ui=
+
+exec "$prefix/bin/mpv" --gpu-api=vulkan --script="$prefix/share/mpv-dlssg/dlssg.lua" \
+    ${ui:+"$ui"} "$@"

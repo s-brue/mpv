@@ -1,5 +1,5 @@
-# Builds mpv with NVIDIA DLSS Frame Generation into /opt/mpv-dlssg, next to the
-# system mpv and ffmpeg, which are not touched.
+# Builds mpv with NVIDIA DLSS Frame Generation and the ModernZ interface into
+# /opt/mpv-dlssg, next to the system mpv and ffmpeg, which are not touched.
 #
 # The resulting package links the proprietary NVIDIA NGX SDK against GPL code:
 # build it for your own use, do not redistribute it.
@@ -13,7 +13,7 @@ pkgrel=1
 pkgdesc='mpv with NVIDIA DLSS Frame Generation (2x-6x)'
 arch=(x86_64)
 url='https://github.com/s-brue/mpv'
-license=(GPL-3.0-or-later LicenseRef-NVIDIA-RTX-SDK)
+license=(GPL-3.0-or-later LGPL-2.1-only LicenseRef-NVIDIA-RTX-SDK)
 provides=(mpv-dlssg)
 conflicts=(mpv-dlssg)
 _prefix=/opt/mpv-dlssg
@@ -36,13 +36,14 @@ options=(!lto !debug !strip)
 source=(
   "FFmpeg::git+${FFMPEG_REPO:-https://github.com/s-brue/FFmpeg.git}#branch=${FFMPEG_BRANCH:-dlssg}"
   "mpv::git+${MPV_REPO:-https://github.com/s-brue/mpv.git}#branch=${MPV_BRANCH:-dlssg}"
+  "ModernZ::git+${MODERNZ_REPO:-https://github.com/s-brue/ModernZ.git}#branch=${MODERNZ_BRANCH:-dlssg}"
   "DLSS::git+${DLSS_REPO:-https://github.com/NVIDIA/DLSS.git}#tag=${_dlss_tag}"
 )
-sha256sums=(SKIP SKIP SKIP)
+sha256sums=(SKIP SKIP SKIP SKIP)
 
 pkgver() {
   local repo
-  for repo in mpv FFmpeg; do
+  for repo in mpv FFmpeg ModernZ; do
     printf 'r%s.%s.' "$(git -C $repo rev-list --count HEAD)" \
       "$(git -C $repo rev-parse --short HEAD)"
   done | sed 's/\.$//'
@@ -92,5 +93,9 @@ package() {
   install -Dm644 DLSS/lib/Linux_x86_64/rel/libnvidia-ngx-dlssg.so.* -t "$pkgdir$_prefix/lib/ngx/"
   install -Dm644 mpv/dlssg/dlssg.lua -t "$pkgdir$_prefix/share/mpv-dlssg/"
   install -Dm755 mpv/dlssg/mpv-dlssg -t "$pkgdir/usr/bin/"
+  # the interface; its icon font has to be where fontconfig finds it
+  install -Dm644 ModernZ/modernz.lua -t "$pkgdir$_prefix/share/mpv-dlssg/"
+  install -Dm644 ModernZ/modernz-icons.ttf -t "$pkgdir/usr/share/fonts/mpv-dlssg/"
+  install -Dm644 ModernZ/LICENSE "$pkgdir/usr/share/licenses/$pkgname/ModernZ-LGPL-2.1.txt"
   install -Dm644 DLSS/LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/NVIDIA-RTX-SDK.txt"
 }

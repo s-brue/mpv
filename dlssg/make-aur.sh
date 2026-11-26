@@ -11,6 +11,7 @@ push_url=ssh://aur@aur.archlinux.org/$name.git
 
 # what is published has to work for everybody: no local source overrides
 unset FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH DLSS_REPO
+unset MODERNZ_REPO MODERNZ_BRANCH
 
 prepare() {
     if [ ! -d "$dir/.git" ]; then

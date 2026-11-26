@@ -7,7 +7,8 @@ here=$(dirname "$(realpath "$0")")
 
 command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
 args=()
-for var in FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH DLSS_REPO; do
+for var in FFMPEG_REPO FFMPEG_BRANCH MPV_REPO MPV_BRANCH \
+    MODERNZ_REPO MODERNZ_BRANCH DLSS_REPO; do
     [ -n "${!var}" ] || continue
     args+=(-e "$var=${!var}")
     case ${!var} in
@@ -35,7 +36,24 @@ if ldd /opt/mpv-dlssg/bin/mpv /opt/mpv-dlssg/lib/*.so | grep 'not found'; then
     echo "missing libraries" >&2
     exit 1
 fi
+# resolve every symbol now: one left undefined (a library missing from the link)
+# would otherwise only show when the filter starts, which needs a GPU
+LD_BIND_NOW=1 /opt/mpv-dlssg/bin/ffmpeg -hide_banner -version >/dev/null
+LD_BIND_NOW=1 mpv-dlssg --version >/dev/null
 mpv-dlssg --version | head -3
+# the interface has to load, and its icon font has to be found
+fc-list | grep modernz-icons
+run() {
+    mpv-dlssg --no-config --vo=null --ao=null --end=1 --msg-level=all=debug \
+        av://lavfi:testsrc 2>&1
+}
+out=$(run)
+grep -m1 'Loading lua script.*modernz' <<<"$out"
+if grep -i 'lua error' <<<"$out"; then exit 1; fi
+# not on top of another interface
+mkdir -p /tmp/other/scripts/uosc
+out=$(MPV_HOME=/tmp/other run)
+if grep 'Loading lua script.*modernz' <<<"$out"; then exit 1; fi
 /opt/mpv-dlssg/bin/ffmpeg -hide_banner -filters | grep dlssg_vulkan
 echo "=== OK"
 CONTAINER

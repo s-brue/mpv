@@ -17,6 +17,8 @@ MPV_REPO="${MPV_REPO:-https://github.com/s-brue/mpv.git}"
 MPV_BRANCH="${MPV_BRANCH:-dlssg}"
 DLSS_REPO="${DLSS_REPO:-https://github.com/NVIDIA/DLSS.git}"
 DLSS_TAG="${DLSS_TAG:-v310.9.16}"
+MODERNZ_REPO="${MODERNZ_REPO:-https://github.com/s-brue/ModernZ.git}"
+MODERNZ_BRANCH="${MODERNZ_BRANCH:-dlssg}"
 VOLUME="${VOLUME:-mpv-dlssg-windows}"
 
 command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
@@ -25,6 +27,8 @@ mkdir -p "$workdir" "$outdir"
 # sources needed on this side
 rm -rf "$workdir/FFmpeg"
 git clone -q --depth 1 --branch "$FFMPEG_BRANCH" "$FFMPEG_REPO" "$workdir/FFmpeg"
+rm -rf "$workdir/ModernZ"
+git clone -q --depth 1 --branch "$MODERNZ_BRANCH" "$MODERNZ_REPO" "$workdir/ModernZ"
 if [ ! -d "$workdir/DLSS" ]; then
     git clone -q --depth 1 --branch "$DLSS_TAG" "$DLSS_REPO" "$workdir/DLSS"
 fi
@@ -46,6 +50,7 @@ docker run --rm \
     -v "$here:/scripts:ro" \
     -v "$here/..:/dlssg:ro" \
     -v "$workdir/ngx:/ngx:ro" \
+    -v "$workdir/ModernZ:/modernz:ro" \
     -v "$outdir:/out" \
     "${mounts[@]}" \
     -e FFMPEG_REPO="$FFMPEG_REPO" -e FFMPEG_BRANCH="$FFMPEG_BRANCH" \
