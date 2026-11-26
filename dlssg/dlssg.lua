@@ -85,6 +85,15 @@ local function on(factor)
     end)
 end
 
+-- mpv disables a filter that fails to initialise: go back and say so.
+mp.enable_messages("error")
+mp.register_event("log-message", function(e)
+    if e.text:find("Disabling filter dlssg", 1, true) then
+        off()
+        mp.osd_message("DLSS-G failed to start (see the log)", 4)
+    end
+end)
+
 mp.add_key_binding("F7", "toggle", function()
     if active() or pending then
         off()

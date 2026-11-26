@@ -26,8 +26,10 @@ depends=(
   rubberband sndio svt-av1 uchardet vapoursynth vulkan-icd-loader wayland x264 x265 zimg zlib
 )
 makedepends=(clang ffnvcodec-headers git meson nasm shaderc spirv-headers vulkan-headers wayland-protocols)
-# LTO off: the NGX SDK is a prebuilt static library
-options=(!lto !debug)
+# lto: the NGX SDK is a prebuilt static library.
+# strip: stripping would modify the signed NVIDIA library and NGX then rejects
+# it; our own binaries are stripped by the install steps instead.
+options=(!lto !debug !strip)
 
 source=(
   "FFmpeg::git+${FFMPEG_REPO:-https://github.com/s-brue/FFmpeg.git}#branch=${FFMPEG_BRANCH:-dlssg}"
@@ -78,7 +80,7 @@ build() {
 
 package() {
   cp -a "$srcdir/stage/." "$pkgdir/"
-  meson install -C build-mpv --destdir "$pkgdir"
+  meson install -C build-mpv --destdir "$pkgdir" --strip
 
   # keep only what is needed at run time, and do not clash with the system mpv
   rm -rf "$pkgdir$_prefix"/{include,lib/pkgconfig,share/applications,share/icons,share/zsh,share/bash-completion,share/fish}
