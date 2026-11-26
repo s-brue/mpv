@@ -203,6 +203,7 @@ pl_vulkan mppl_create_vulkan(struct vulkan_opts *opts,
         VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME,
         VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+        VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
         VK_KHR_SHADER_EXPECT_ASSUME_EXTENSION_NAME,
         VK_KHR_SHADER_MAXIMAL_RECONVERGENCE_EXTENSION_NAME,
         VK_KHR_SHADER_RELAXED_EXTENDED_INSTRUCTION_EXTENSION_NAME,
@@ -217,6 +218,9 @@ pl_vulkan mppl_create_vulkan(struct vulkan_opts *opts,
         VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME,
         VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME,
         VK_NV_OPTICAL_FLOW_EXTENSION_NAME,
+        /* required by NVIDIA NGX, for DLSS filters running on this device */
+        "VK_NVX_binary_import",
+        "VK_NVX_image_view_handle",
         /*
          * Extensions below this point are newer than our minimum required Vulkan
          * headers and so we only activate them if the build time headers contain
@@ -419,6 +423,7 @@ pl_vulkan mppl_create_vulkan(struct vulkan_opts *opts,
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .pNext = &recommended_vk13,
         .scalarBlockLayout = true,
+        .bufferDeviceAddress = true,
         .vulkanMemoryModelAvailabilityVisibilityChains = true,
         .shaderSubgroupExtendedTypes = true,
         .shaderUniformBufferArrayNonUniformIndexing = true,
@@ -443,6 +448,7 @@ pl_vulkan mppl_create_vulkan(struct vulkan_opts *opts,
         .features = {
             .shaderInt16 = true,
             .shaderFloat64 = true,
+            .shaderStorageImageArrayDynamicIndexing = true,
         },
     };
 
