@@ -14,7 +14,7 @@ pkgver=r0
 pkgrel=1
 pkgdesc='mpv with NVIDIA DLSS Frame Generation (2x-6x)'
 arch=(x86_64)
-url='https://github.com/s-brue/mpv'
+url='https://github.com/s-brue/mpv-dlssg'
 license=(GPL-3.0-or-later LGPL-2.1-only MPL-2.0 LicenseRef-NVIDIA-RTX-SDK)
 provides=(mpv-dlssg)
 conflicts=(mpv-dlssg)
@@ -39,7 +39,7 @@ options=(!lto !debug !strip)
 
 source=(
   "FFmpeg::git+${FFMPEG_REPO:-https://github.com/s-brue/FFmpeg.git}#branch=${FFMPEG_BRANCH:-dlssg}"
-  "mpv::git+${MPV_REPO:-https://github.com/s-brue/mpv.git}#branch=${MPV_BRANCH:-dlssg}"
+  "mpv::git+${MPV_REPO:-https://github.com/s-brue/mpv-dlssg.git}#branch=${MPV_BRANCH:-dlssg}"
   "ModernZ::git+${MODERNZ_REPO:-https://github.com/s-brue/ModernZ.git}#branch=${MODERNZ_BRANCH:-dlssg}"
   "thumbfast::git+${THUMBFAST_REPO:-https://github.com/s-brue/thumbfast.git}#branch=${THUMBFAST_BRANCH:-dlssg}"
   "https://pypi.nvidia.com/nvidia-vfx/$_vfx_whl"

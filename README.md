@@ -72,7 +72,7 @@ It takes two forks, both on their `dlssg` branch:
 | Repository | Change |
 |---|---|
 | [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan`, `nvvfg_cuda` and `nvvsr_cuda` filters, which do the work |
-| [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, a few window and menu changes (below), plus the files in [`dlssg/`](dlssg) |
+| [s-brue/mpv-dlssg](https://github.com/s-brue/mpv-dlssg/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, a few window and menu changes (below), plus the files in [`dlssg/`](dlssg) |
 
 The interface is [ModernZ](https://github.com/Samillion/ModernZ), from the
 [s-brue/ModernZ](https://github.com/s-brue/ModernZ/tree/dlssg) fork. The fork
@@ -138,8 +138,8 @@ The [`dlssg/PKGBUILD`](dlssg/PKGBUILD) recipe downloads the forks and the
 everything into `/opt/mpv-dlssg`. The system `mpv` and `ffmpeg` are not touched.
 
 ```sh
-git clone --depth 1 --branch dlssg https://github.com/s-brue/mpv.git
-cd mpv/dlssg
+git clone --depth 1 --branch dlssg https://github.com/s-brue/mpv-dlssg.git
+cd mpv-dlssg/dlssg
 makepkg -si
 ```
 
