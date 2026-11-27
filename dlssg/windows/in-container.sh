@@ -48,6 +48,8 @@ name="mpv-dlssg-windows-x86_64-$commit"
 rm -rf "/work/$name" && mkdir "/work/$name"
 cp "$package"/mpv.exe "$package"/mpv.com "/work/$name/"
 cp -r "$package"/mpv "/work/$name/"
+# dlssg.lua runs it to see what the graphics card supports
+cp "$prefix/bin/ffmpeg.exe" "/work/$name/"
 cp /ngx/ffngx_dlssg.dll /ngx/nvngx_dlssg.dll /ngx/NVIDIA-RTX-SDK.txt "/work/$name/"
 cp -r /nvvfx "/work/$name/nvvfx"
 cp /dlssg/dlssg.lua /dlssg/dlssg-sharpen.glsl /modernz/modernz.lua "/work/$name/"

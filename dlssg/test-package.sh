@@ -44,6 +44,9 @@ mpv-dlssg --version | head -3
 test -s /opt/mpv-dlssg/share/mpv-dlssg/dlssg-sharpen.glsl
 /opt/mpv-dlssg/bin/ffmpeg -hide_banner -filters | grep nvvfg_cuda
 test -s /opt/mpv-dlssg/lib/nvvfx/libnvVFXVideoFrameGeneration.so
+/opt/mpv-dlssg/bin/ffmpeg -hide_banner -filters | grep nvvsr_cuda
+test -s /opt/mpv-dlssg/lib/nvvfx/libnvVFXVideoSuperRes.so
+ls /opt/mpv-dlssg/lib/nvvfx/libnvidia-ngx-vsr.so.* >/dev/null
 # the interface has to load, and its icon font has to be found
 fc-list | grep modernz-icons
 run() {

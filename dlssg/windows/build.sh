@@ -41,13 +41,15 @@ fi
 
 "$here/build-shim.sh" "$workdir/FFmpeg" "$workdir/DLSS" "$workdir/ngx"
 
-# NVIDIA VFX SDK for Video Frame Generation, from the wheel of its Python package,
+# NVIDIA VFX SDK for Video Frame Generation and Super Resolution, from the wheel of
+# its Python package,
 # plus the Visual C++ runtime it needs (from the MSVC used above)
 [ -f "$workdir/$VFX_WHL" ] || curl -sSfL -o "$workdir/$VFX_WHL" "https://pypi.nvidia.com/nvidia-vfx/$VFX_WHL"
 echo "$VFX_SHA256  $workdir/$VFX_WHL" | sha256sum -c --quiet
 rm -rf "$workdir/nvvfx" && mkdir -p "$workdir/nvvfx"
 (cd "$workdir/nvvfx" && unzip -q -j "../$VFX_WHL" nvvfx/libs/NVCVImage.dll nvvfx/libs/NVVideoEffects.dll \
     nvvfx/libs/nvVFXVideoFrameGeneration.dll nvvfx/libs/cudart64_12.dll \
+    nvvfx/libs/nvVFXVideoSuperRes.dll nvvfx/libs/nvngxruntime.dll nvvfx/libs/nvngx_vsr.dll \
     '*.dist-info/licenses/packaging/NVIDIA-Software-License-Agreement-*' \
     '*.dist-info/licenses/packaging/product-specific-terms-*' \
     '*.dist-info/licenses/packaging/ThirdPartyLicenses_VFX_SDK.txt')

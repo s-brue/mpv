@@ -16,21 +16,28 @@ It takes two forks, both on their `dlssg` branch:
 
 | Repository | Change |
 |---|---|
-| [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan` and `nvvfg_cuda` filters, which do the work |
+| [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan`, `nvvfg_cuda` and `nvvsr_cuda` filters, which do the work |
 | [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, a few window and menu changes (below), plus the files in [`dlssg/`](dlssg) |
 
 The interface is [ModernZ](https://github.com/Samillion/ModernZ), from the
 [s-brue/ModernZ](https://github.com/s-brue/ModernZ/tree/dlssg) fork. The fork
 uses green as its accent colour, hides the minimize, maximize and close symbols,
 shows a single row (play, seekbar, `FG`, window size) in small windows, and
-adds four buttons:
+adds five buttons:
 
 | Button | Left click | Right click |
 |---|---|---|
 | window, on the left | like the `c` key: window and video at 100%, 75%, 50%, 25% of the video size | back to 100% |
 | `FG`, on the right | like the `k` key: off, 2x ... 6x; green while on | off |
 | `NV`, on the right | like the `h` key; green while on | off |
+| `SR`, on the right | like the `a` key; green while on | off |
 | `SH`, on the right | like the `y` key: sharpening strength; green while on | off |
+
+Only what the graphics card supports can be used: at startup each filter is tried
+on a few frames. The `FG`, `NV` or `SR` button of one it cannot run is dimmed,
+and neither the button nor its key does anything. `k` stops at the highest
+factor of the card. When there is no room for all of them, the least important
+buttons are hidden instead of drawn over the others.
 
 The window and menu changes in mpv:
 
@@ -60,6 +67,14 @@ hold-out test on one film it did slightly better than DLSS-G at its high quality
 (VMAF 64.0 against 62.5, RIFE 68.4), but it is slower: at 3840x1606 on an RTX
 5080 high quality reaches 4x and not 6x. It takes 8 and 10 bit 4:2:0
 video, HDR included.
+
+NVIDIA Video Super Resolution, of the same SDK, upscales videos smaller than the
+screen (`a` key, `SR` button), up to 4x. It works with the NVIDIA frame
+generation, not with DLSS-G. NVIDIA offers it for SDR video; HDR10 also works,
+with colours preserved, but its picture quality has not been judged.
+
+Videos the GPU cannot decode, such as old Xvid or DivX ones, work with all of
+these too: they are decoded in software and copied to the GPU.
 
 ## Requirements
 
@@ -147,6 +162,7 @@ mpv-dlssg video.mkv
 |---|---|
 | `k` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
 | `h` | NVIDIA video Frame Generation, rotate: off, medium 2x, high 2x, medium 4x, high 4x, medium 6x |
+| `a` | NVIDIA Super Resolution up to the screen size, rotate: off, for good quality sources, for compressed ones |
 | `y` | rotate the sharpening: off, 0.25, 0.5, 0.75, 1 |
 | `c` | rotate the window size: 100%, 75%, 50%, 25% (needs ModernZ) |
 | `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% of the video size, centred |

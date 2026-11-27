@@ -26,7 +26,7 @@ mkdir -p "$program" "$config/portable_config/scripts" "$config/portable_config/f
 
 # the program, and the scripts as part of its own configuration directory, so
 # that mpv.exe alone does everything
-cp -r "$src"/mpv.exe "$src"/mpv.com "$src"/mpv "$src"/ffngx_dlssg.dll "$src"/nvngx_dlssg.dll "$src"/nvvfx "$program/"
+cp -r "$src"/mpv.exe "$src"/mpv.com "$src"/mpv "$src"/ffmpeg.exe "$src"/ffngx_dlssg.dll "$src"/nvngx_dlssg.dll "$src"/nvvfx "$program/"
 cp "$src"/NVIDIA-RTX-SDK.txt "$src"/ModernZ-LGPL-2.1.txt "$src"/thumbfast-MPL-2.0.txt "$program/licenses/"
 cp "$here/../../LICENSE.GPL" "$program/licenses/mpv-GPL.txt"
 mkdir -p "$program/portable_config/scripts" "$program/portable_config/fonts"
@@ -68,7 +68,8 @@ NVIDIA's own nvngx_dlssg.dll and the NVIDIA VFX SDK libraries (nvvfx directory).
 it anywhere and do not publish it. Licenses are in the "licenses" directory.
 
 Keys: k DLSS Frame Generation (off, 2x..6x), h NVIDIA video Frame Generation
-(medium/high 2x, 4x, medium 6x), y sharpness, c window size, Alt+1..Alt+4 window at
+(medium/high 2x, 4x, medium 6x), a NVIDIA Super
+Resolution, y sharpness, c window size, Alt+1..Alt+4 window at
 100/75/50/25 % of the video, Ctrl+1 full screen, Ctrl+2..Ctrl+4 window at 75/50/25 %
 of the screen, f or F11 full screen, Esc or q quit. Right click: menu.
 The window has no title bar: drag the picture to move it and its edges to resize

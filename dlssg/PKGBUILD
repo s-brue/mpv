@@ -1,4 +1,5 @@
-# Builds mpv with NVIDIA DLSS and Video Frame Generation, the ModernZ interface and
+# Builds mpv with NVIDIA DLSS and Video Frame Generation, Video Super Resolution,
+# the ModernZ interface and
 # thumbfast thumbnails into /opt/mpv-dlssg, next to the system mpv and ffmpeg,
 # which are not touched.
 #
@@ -97,14 +98,16 @@ package() {
   rm -rf "$pkgdir$_prefix"/{include,lib/pkgconfig,share/applications,share/icons,share/zsh,share/bash-completion,share/fish}
 
   install -Dm644 DLSS/lib/Linux_x86_64/rel/libnvidia-ngx-dlssg.so.* -t "$pkgdir$_prefix/lib/ngx/"
-  # only what Video Frame Generation needs of the VFX SDK (320 MB)
+  # only what Video Frame Generation and Super Resolution need of the VFX SDK
   local vfx="$srcdir/vfx"
   rm -rf "$vfx" && mkdir -p "$vfx"
   bsdtar -xf "$srcdir/$_vfx_whl" -C "$vfx" 'nvidia_vfx.libs/libcudart-*' \
     'nvvfx/libs/libNVCVImage.so' 'nvvfx/libs/libVideoFX.so' 'nvvfx/libs/libVideoFXLocal.so' \
     'nvvfx/libs/libnvVFXVideoFrameGeneration.so' 'nvvfx/libs/libcudnn.so.9' \
     'nvvfx/libs/libnppc.so.12' 'nvvfx/libs/libnppial.so.12' 'nvvfx/libs/libnppicc.so.12' \
-    'nvvfx/libs/libnppidei.so.12' 'nvvfx/libs/libnppig.so.12' '*.dist-info/licenses/*'
+    'nvvfx/libs/libnppidei.so.12' 'nvvfx/libs/libnppig.so.12' \
+    'nvvfx/libs/libnvngxruntime.so' 'nvvfx/libs/libnvVFXVideoSuperRes.so' \
+    'nvvfx/libs/libnvidia-ngx-vsr.so.*' '*.dist-info/licenses/*'
   install -Dm644 "$vfx"/nvvfx/libs/*.so* "$vfx"/nvidia_vfx.libs/* -t "$pkgdir$_prefix/lib/nvvfx/"
   find "$vfx" -path '*dist-info/licenses/*' -type f \
     -exec install -Dm644 {} -t "$pkgdir/usr/share/licenses/$pkgname/nvidia-vfx/" \;
