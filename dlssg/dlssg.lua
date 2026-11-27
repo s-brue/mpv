@@ -1,40 +1,65 @@
--- DLSS Frame Generation controls for the dlssg_vulkan filter.
+-- Frame generation controls: DLSS Frame Generation (dlssg_vulkan filter) and
+-- NVIDIA Video Frame Generation (nvvfg_cuda filter). One at a time.
 --
---   k    rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
+--   k    DLSS-G, rotate: off -> 2x -> 3x -> 4x -> 5x -> 6x -> off
+--   h    NVIDIA video, rotate: off -> medium 2x -> high 2x -> medium 4x
+--        -> high 4x -> medium 6x -> off (high is too slow for 6x)
 --
 -- Factors the display cannot show are skipped.
 --
 -- Like any other mpv binding, these can be changed in input.conf:
 --   k    script-binding dlssg/cycle
+--   h    script-binding dlssg/nv
 --
 -- Also available, with no key by default:
---   script-binding dlssg/toggle   on/off, at the last factor used (at first,
---                                 the highest possible)
---   script-binding dlssg/off
+--   script-binding dlssg/toggle   DLSS-G on/off, at the last factor used (at
+--                                 first, the highest possible)
+--   script-binding dlssg/off      either of them off
 --
--- The factor in use (0 = off) is published in user-data/dlssg/factor, which the
--- DLSS-G button of the ModernZ interface shows.
+-- For the buttons of the ModernZ interface, user-data/dlssg/factor holds the
+-- DLSS-G factor (0 = off) and user-data/dlssg/nv the NVIDIA video one ("" = off,
+-- else like "M2" or "H4").
 
 local mp = require "mp"
+local utils = require "mp.utils"
 
 local MAX_FACTOR = 6
-local target = nil      -- requested factor, nil = off
-local last = nil        -- factor the toggle comes back to
-local saved_hwdec = nil -- set while the filter is in use
-local pending = nil     -- timer waiting for the Vulkan decoder
+local NV_LEVELS = {
+    {factor = 2, mode = "medium"}, {factor = 2, mode = "high"},
+    {factor = 4, mode = "medium"}, {factor = 4, mode = "high"},
+    {factor = 6, mode = "medium"},
+}
+-- what runs: nil, {kind = "fg", factor = n} or {kind = "nv", factor = n, mode, level}
+local target = nil
+local last = nil        -- DLSS-G factor the toggle comes back to
+local saved_hwdec = nil -- set while a filter is in use
+local pending = nil     -- timer waiting for the decoder
 
-local function active()
+local LABELS = {fg = "dlssg", nv = "nvfg"}
+-- the frames each filter works on
+local HWDEC = {fg = "vulkan", nv = "nvdec"}
+
+local function active(label)
     for _, f in ipairs(mp.get_property_native("vf") or {}) do
-        if f.label == "dlssg" then return true end
+        if f.label == label then return true end
     end
     return false
 end
 
-local function publish()
-    mp.set_property_native("user-data/dlssg/factor", target or 0)
+local function remove_filters()
+    for _, label in pairs(LABELS) do
+        if active(label) then mp.commandv("vf", "remove", "@" .. label) end
+    end
 end
 
--- Adding or removing the filter reconfigures the video output, and mpv would
+local function publish()
+    mp.set_property_native("user-data/dlssg/factor", target and target.kind == "fg" and target.factor or 0)
+    local nv = ""
+    if target and target.kind == "nv" then nv = target.mode:sub(1, 1):upper() .. target.factor end
+    mp.set_property_native("user-data/dlssg/nv", nv)
+end
+
+-- Adding or removing a filter reconfigures the video output, and mpv would
 -- then size the window anew: keep the size it has, however it was set.
 local resize_setting, resize_timer = nil, nil
 local function keep_window_size()
@@ -53,9 +78,9 @@ end
 local function off()
     target = nil
     publish()
-    if saved_hwdec or active() then keep_window_size() end
+    if saved_hwdec or active(LABELS.fg) or active(LABELS.nv) then keep_window_size() end
     if pending then pending:kill(); pending = nil end
-    if active() then mp.commandv("vf", "remove", "@dlssg") end
+    remove_filters()
     if saved_hwdec then
         mp.set_property("hwdec", saved_hwdec)
         saved_hwdec = nil
@@ -72,30 +97,43 @@ local function limit()
     return max, source
 end
 
+local function name()
+    if target.kind == "fg" then return string.format("DLSS-G %dx", target.factor) end
+    return string.format("NVIDIA video FG %s %dx", target.mode, target.factor)
+end
+
 local function add_filter()
     local source = mp.get_property_number("container-fps") or 0
-    if active() then mp.commandv("vf", "remove", "@dlssg") end
-    local factor = target
-    if mp.commandv("vf", "add", "@dlssg:dlssg_vulkan=factor=" .. factor) then
-        mp.osd_message(string.format("DLSS-G %dx (%.2f fps)", factor, source * factor), 3)
+    remove_filters()
+    local filter
+    if target.kind == "fg" then
+        filter = "@dlssg:dlssg_vulkan=factor=" .. target.factor
     else
+        filter = "@nvfg:nvvfg_cuda=factor=" .. target.factor .. ":mode=" .. target.mode
+    end
+    if mp.commandv("vf", "add", filter) then
+        mp.osd_message(string.format("%s (%.2f fps)", name(), source * target.factor), 3)
+    else
+        local what = name()
         off()
-        mp.osd_message("DLSS-G not available (see the log)", 4)
+        mp.osd_message(what .. " not available (see the log)", 4)
     end
 end
 
-local function apply(factor)
-    target, last = factor, factor
+local function apply(spec)
+    target = spec
+    if spec.kind == "fg" then last = spec.factor end
     publish()
     keep_window_size()
-    mp.osd_message(string.format("DLSS-G %dx", factor), 3)
+    mp.osd_message(name(), 3)
+    if pending then pending:kill(); pending = nil end
 
-    -- Still waiting for the decoder: the timer picks up the new target.
-    if pending then return end
-    if saved_hwdec then
+    local wanted = HWDEC[spec.kind]
+    if saved_hwdec and mp.get_property("hwdec") == wanted and mp.get_property("hwdec-current") == wanted then
         add_filter()
         return
     end
+    remove_filters()
 
     -- Do not stack it on top of another interpolator.
     local others, found = {}, false
@@ -104,14 +142,14 @@ local function apply(factor)
     end
     if found then mp.set_property_native("vf", others) end
 
-    -- The filter needs Vulkan frames.
-    saved_hwdec = mp.get_property("hwdec")
-    mp.set_property("hwdec", "vulkan")
+    saved_hwdec = saved_hwdec or mp.get_property("hwdec")
+    mp.set_property("hwdec", wanted)
     pending = mp.add_timeout(0.5, function() -- let the decoder restart
         pending = nil
-        if mp.get_property("hwdec-current") ~= "vulkan" then
+        if mp.get_property("hwdec-current") ~= wanted then
+            local what = name()
             off()
-            mp.osd_message("DLSS-G: no Vulkan decoding for this video", 3)
+            mp.osd_message(what .. ": no " .. wanted .. " decoding for this video", 3)
             return
         end
         add_filter()
@@ -122,9 +160,9 @@ end
 local function usable()
     local max, source = limit()
     if not max then
-        mp.osd_message("DLSS-G: no video, or unknown frame rate")
+        mp.osd_message("Frame generation: no video, or unknown frame rate")
     elseif max < 2 then
-        mp.osd_message(string.format("DLSS-G: the video already runs at %.0f fps", source))
+        mp.osd_message(string.format("Frame generation: the video already runs at %.0f fps", source))
     else
         return max
     end
@@ -133,37 +171,58 @@ end
 local function cycle()
     local max = usable()
     if not max then return end
-    local next_factor = target and target + 1 or 2
+    local next_factor = target and target.kind == "fg" and target.factor + 1 or 2
     if next_factor > max then
         off()
         mp.osd_message("DLSS-G off")
     else
-        apply(next_factor)
+        apply({kind = "fg", factor = next_factor})
+    end
+end
+
+local function cycle_nv()
+    local max = usable()
+    if not max then return end
+    -- the filter reads 8 and 10 bit 4:2:0
+    local format = mp.get_property("video-params/hw-pixelformat") or mp.get_property("video-params/pixelformat") or ""
+    if format:find("p012") or format:find("p016") or format:find("12") and format ~= "nv12" or format:find("444") then
+        mp.osd_message("NVIDIA video FG: 4:2:0 of 8 or 10 bits only (use DLSS-G, key k)", 4)
+        return
+    end
+    local level = target and target.kind == "nv" and target.level or 0
+    repeat level = level + 1 until not NV_LEVELS[level] or NV_LEVELS[level].factor <= max
+    local entry = NV_LEVELS[level]
+    if not entry then
+        off()
+        mp.osd_message("NVIDIA video FG off")
+    else
+        apply({kind = "nv", factor = entry.factor, mode = entry.mode, level = level})
     end
 end
 
 local function toggle()
-    if target then
+    if target and target.kind == "fg" then
         off()
         mp.osd_message("DLSS-G off")
         return
     end
     local max = usable()
-    if max then apply(math.min(last or max, max)) end
+    if max then apply({kind = "fg", factor = math.min(last or max, max)}) end
 end
 
 -- mpv disables a filter that fails to initialise: go back and say so.
 mp.enable_messages("error")
 mp.register_event("log-message", function(e)
-    if e.text:find("Disabling filter dlssg", 1, true) then
+    if target and e.text:find("Disabling filter " .. LABELS[target.kind], 1, true) then
+        local what = name()
         off()
-        mp.osd_message("DLSS-G failed to start (see the log)", 4)
+        mp.osd_message(what .. " failed to start (see the log)", 4)
     end
 end)
 
 -- The filter may be removed by someone else (another script, "vf" commands).
 mp.observe_property("vf", "native", function()
-    if target and not pending and not active() then off() end
+    if target and not pending and not active(LABELS[target.kind]) then off() end
 end)
 
 publish()
@@ -235,6 +294,42 @@ for key, fraction in ipairs({1, 0.75, 0.5, 0.25}) do
 end
 mp.add_key_binding("Ctrl+1", "window-screen-1", function() mp.set_property_native("fullscreen", true) end)
 
+-- Sharpening (dlssg-sharpen.glsl): y rotates off, 0.25, 0.5, 0.75, 1.
+local sharpness_levels = {0.25, 0.5, 0.75, 1}
+local sharpness = 0 -- index into the levels, 0 = off
+
+-- next to this script, or in the shaders directory beside the scripts one
+local function find_shader()
+    local dir = debug.getinfo(1, "S").source:match("^@(.*)[/\\]") or "."
+    for _, path in ipairs({dir .. "/dlssg-sharpen.glsl", dir .. "/../shaders/dlssg-sharpen.glsl"}) do
+        if utils.file_info(path) then return path end
+    end
+end
+local shader = find_shader()
+
+local function set_sharpness(index)
+    sharpness = index
+    if index == 0 then
+        mp.commandv("change-list", "glsl-shaders", "remove", shader)
+    else
+        mp.commandv("change-list", "glsl-shader-opts", "append", "MPVDLSSG_SHARPNESS=" .. sharpness_levels[index])
+        mp.commandv("change-list", "glsl-shaders", "append", shader)
+    end
+    mp.set_property_native("user-data/dlssg/sharpness", sharpness_levels[index] or 0)
+end
+
+if shader then
+    mp.set_property_native("user-data/dlssg/sharpness", 0)
+    mp.add_key_binding("y", "sharpen", function()
+        local index = (sharpness + 1) % (#sharpness_levels + 1)
+        if index > 0 then mp.commandv("change-list", "glsl-shaders", "remove", shader) end
+        set_sharpness(index)
+        mp.osd_message(index == 0 and "Sharpness: off" or ("Sharpness: " .. sharpness_levels[index]))
+    end)
+    mp.add_key_binding(nil, "sharpen-off", function() set_sharpness(0) end)
+end
+
 mp.add_key_binding("k", "cycle", cycle)
+mp.add_key_binding("h", "nv", cycle_nv)
 mp.add_key_binding(nil, "toggle", toggle)
 mp.add_key_binding(nil, "off", off)

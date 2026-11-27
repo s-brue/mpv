@@ -26,12 +26,14 @@ mkdir -p "$program" "$config/portable_config/scripts" "$config/portable_config/f
 
 # the program, and the scripts as part of its own configuration directory, so
 # that mpv.exe alone does everything
-cp -r "$src"/mpv.exe "$src"/mpv.com "$src"/mpv "$src"/ffngx_dlssg.dll "$src"/nvngx_dlssg.dll "$program/"
-cp "$src"/NVIDIA-RTX-SDK.txt "$src"/ModernZ-LGPL-2.1.txt "$program/licenses/"
+cp -r "$src"/mpv.exe "$src"/mpv.com "$src"/mpv "$src"/ffngx_dlssg.dll "$src"/nvngx_dlssg.dll "$src"/nvvfx "$program/"
+cp "$src"/NVIDIA-RTX-SDK.txt "$src"/ModernZ-LGPL-2.1.txt "$src"/thumbfast-MPL-2.0.txt "$program/licenses/"
 cp "$here/../../LICENSE.GPL" "$program/licenses/mpv-GPL.txt"
 mkdir -p "$program/portable_config/scripts" "$program/portable_config/fonts"
-cp "$src"/dlssg.lua "$src"/modernz.lua "$program/portable_config/scripts/"
+cp "$src"/dlssg.lua "$src"/modernz.lua "$src"/thumbfast.lua "$program/portable_config/scripts/"
 cp "$src"/fonts/modernz-icons.ttf "$program/portable_config/fonts/"
+mkdir -p "$program/portable_config/shaders"
+cp "$src"/dlssg-sharpen.glsl "$program/portable_config/shaders/"
 
 cat > "$config/portable_config/mpv.conf" <<'CONF'
 # DLSS Frame Generation needs Vulkan
@@ -62,10 +64,11 @@ DO NOT DISTRIBUTE UNDER ANY CIRCUMSTANCES
 mpv-dlssg $version: personal use only.
 
 It contains GPL code (mpv, FFmpeg) linked with the proprietary NVIDIA NGX SDK,
-and NVIDIA's own nvngx_dlssg.dll. Do not copy it to other people, do not upload
+NVIDIA's own nvngx_dlssg.dll and the NVIDIA VFX SDK libraries (nvvfx directory). Do not copy it to other people, do not upload
 it anywhere and do not publish it. Licenses are in the "licenses" directory.
 
-Keys: k Frame Generation (off, 2x..6x), c window size, Alt+1..Alt+4 window at
+Keys: k DLSS Frame Generation (off, 2x..6x), h NVIDIA video Frame Generation
+(medium/high 2x, 4x, medium 6x), y sharpness, c window size, Alt+1..Alt+4 window at
 100/75/50/25 % of the video, Ctrl+1 full screen, Ctrl+2..Ctrl+4 window at 75/50/25 %
 of the screen, f or F11 full screen, Esc or q quit. Right click: menu.
 The window has no title bar: drag the picture to move it and its edges to resize

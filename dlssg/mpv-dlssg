@@ -12,5 +12,16 @@ for script in "$config"/scripts/[Mm]odern* "$config"/scripts/*osc*; do
 done
 [ "${MPV_DLSSG_OSC:-}" = no ] && ui=
 
+# thumbfast thumbnails, unless the configuration has its own copy or
+# MPV_DLSSG_THUMBNAILS=no. It has to generate them with our mpv, not with the
+# system one, which may be missing or built without what HDR needs.
+thumbs=--script=$prefix/share/mpv-dlssg/thumbfast.lua
+for script in "$config"/scripts/*thumbfast*; do
+    [ -e "$script" ] && thumbs=
+done
+[ "${MPV_DLSSG_THUMBNAILS:-}" = no ] && thumbs=
+thumbs_mpv=${thumbs:+--script-opts-append=thumbfast-mpv_path=$prefix/bin/mpv}
+grep -qs '^mpv_path=' "$config/script-opts/thumbfast.conf" && thumbs_mpv=
+
 exec "$prefix/bin/mpv" --gpu-api=vulkan --script="$prefix/share/mpv-dlssg/dlssg.lua" \
-    ${ui:+"$ui"} "$@"
+    ${ui:+"$ui"} ${thumbs:+"$thumbs"} ${thumbs_mpv:+"$thumbs_mpv"} "$@"

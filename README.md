@@ -16,19 +16,21 @@ It takes two forks, both on their `dlssg` branch:
 
 | Repository | Change |
 |---|---|
-| [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan` filter, which does the work |
+| [s-brue/FFmpeg](https://github.com/s-brue/FFmpeg/tree/dlssg) | new `dlssg_vulkan` and `nvvfg_cuda` filters, which do the work |
 | [s-brue/mpv](https://github.com/s-brue/mpv/tree/dlssg) | enables the Vulkan extensions NVIDIA NGX needs, a few window and menu changes (below), plus the files in [`dlssg/`](dlssg) |
 
 The interface is [ModernZ](https://github.com/Samillion/ModernZ), from the
 [s-brue/ModernZ](https://github.com/s-brue/ModernZ/tree/dlssg) fork. The fork
 uses green as its accent colour, hides the minimize, maximize and close symbols,
 shows a single row (play, seekbar, `FG`, window size) in small windows, and
-adds two buttons:
+adds four buttons:
 
 | Button | Left click | Right click |
 |---|---|---|
 | window, on the left | like the `c` key: window and video at 100%, 75%, 50%, 25% of the video size | back to 100% |
 | `FG`, on the right | like the `k` key: off, 2x ... 6x; green while on | off |
+| `NV`, on the right | like the `h` key; green while on | off |
+| `SH`, on the right | like the `y` key: sharpening strength; green while on | off |
 
 The window and menu changes in mpv:
 
@@ -42,10 +44,22 @@ The window and menu changes in mpv:
 * default keys: `Esc` quits, `F11` toggles full screen and `Alt+1` ... `Alt+4`
   set the window size (`Alt+2` no longer doubles it).
 
+Seekbar thumbnails come from [thumbfast](https://github.com/po5/thumbfast), from
+the [s-brue/thumbfast](https://github.com/s-brue/thumbfast/tree/dlssg) fork, which
+fixes washed out thumbnails of HDR video.
+
 DLSS Frame Generation is meant for games, so what a game engine would provide is
 substituted: motion vectors come from NVIDIA hardware optical flow (cleaned up
 with a forward/backward check, hole filling and a median filter), depth is
 constant and the camera is fixed.
+
+There is a second generator, NVIDIA Video Frame Generation from the
+[VFX SDK](https://github.com/NVIDIA-Maxine/Maxine-VFX-SDK), which is meant for
+video: the `h` key and the `NV` button. Only one of the two runs at a time. In a
+hold-out test on one film it did slightly better than DLSS-G at its high quality
+(VMAF 64.0 against 62.5, RIFE 68.4), but it is slower: at 3840x1606 on an RTX
+5080 high quality reaches 4x and not 6x. It takes 8 and 10 bit 4:2:0
+video, HDR included.
 
 ## Requirements
 
@@ -66,13 +80,16 @@ cd mpv/dlssg
 makepkg -si
 ```
 
-The DLSS SDK is large: about 220 MB to download, 1.6 GB once checked out.
+The DLSS SDK is large: about 220 MB to download, 1.6 GB once checked out. The
+recipe also downloads the VFX SDK libraries, a 380 MB wheel of the `nvidia-vfx`
+Python package; 320 MB of it end up installed.
 
 To build from local clones instead:
 
 ```sh
 FFMPEG_REPO=file://$HOME/repos/FFmpeg MPV_REPO=file://$HOME/repos/mpv \
-  MODERNZ_REPO=file://$HOME/repos/ModernZ makepkg -si
+  MODERNZ_REPO=file://$HOME/repos/ModernZ \
+  THUMBFAST_REPO=file://$HOME/repos/thumbfast makepkg -si
 ```
 
 ### A .tbz archive
@@ -129,6 +146,8 @@ mpv-dlssg video.mkv
 | Key | Action |
 |---|---|
 | `k` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
+| `h` | NVIDIA video Frame Generation, rotate: off, medium 2x, high 2x, medium 4x, high 4x, medium 6x |
+| `y` | rotate the sharpening: off, 0.25, 0.5, 0.75, 1 |
 | `c` | rotate the window size: 100%, 75%, 50%, 25% (needs ModernZ) |
 | `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% of the video size, centred |
 | `Ctrl+1` | full screen |
@@ -154,8 +173,11 @@ its own in `scripts/` (uosc, another OSC, or your own copy of ModernZ), or
 `MPV_DLSSG_OSC=no` is set. It is configured as usual, in
 `script-opts/modernz.conf`; its
 [documentation](https://github.com/Samillion/ModernZ#customization) lists the
-options. Thumbnails need [thumbfast](https://github.com/po5/thumbfast), which is
-not included.
+options.
+
+It also loads thumbfast, set up to generate the thumbnails with this mpv, unless
+your configuration has its own copy in `scripts/` or `MPV_DLSSG_THUMBNAILS=no` is
+set. Its options go in `script-opts/thumbfast.conf`.
 
 The filter can also be given directly, and it takes
 [options](https://github.com/s-brue/FFmpeg/blob/dlssg/doc/filters.texi)
@@ -164,6 +186,9 @@ The filter can also be given directly, and it takes
 ```sh
 mpv-dlssg --hwdec=vulkan --vf=dlssg_vulkan=factor=4 video.mkv
 ```
+
+Sharpening is AMD FidelityFX CAS with an adjustable strength, applied on top of
+any shaders of your configuration.
 
 ## Limitations
 

@@ -8,4 +8,10 @@ for %%c in ("%APPDATA%\mpv" "%~dp0portable_config") do (
     if exist "%%~c\scripts\modern*" set "UI="
 )
 if "%MPV_DLSSG_OSC%"=="no" set "UI="
-"%~dp0mpv.exe" --gpu-api=vulkan --hwdec=auto-safe --script="%~dp0dlssg.lua" %UI% %*
+rem thumbnails, unless the configuration has its own thumbfast
+set "THUMBS=--script="%~dp0thumbfast.lua""
+for %%c in ("%APPDATA%\mpv" "%~dp0portable_config") do (
+    if exist "%%~c\scripts\*thumbfast*" set "THUMBS="
+)
+if "%MPV_DLSSG_THUMBNAILS%"=="no" set "THUMBS="
+"%~dp0mpv.exe" --gpu-api=vulkan --hwdec=auto-safe --script="%~dp0dlssg.lua" %UI% %THUMBS% %*
