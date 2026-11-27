@@ -3,12 +3,67 @@
 # mpv with DLSS Frame Generation
 
 This is a fork of [mpv](https://github.com/mpv-player/mpv) that multiplies the
-frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation on Linux.
+frame rate of videos (2x to 6x) with NVIDIA DLSS Frame Generation on Linux, and
+can upscale and interpolate them with the NVIDIA VFX SDK. It is mostly a project
+for NVIDIA GeForce RTX cards: see [what your card can do](#hardware-support).
 
 For everything about mpv itself (usage, system requirements, compilation
 options, licensing, bug reporting) see the
 **[README of the original project](https://github.com/mpv-player/mpv/blob/master/README.md)**.
 Do not report problems with this fork to the mpv developers.
+
+## Hardware support
+
+| Feature | GeForce RTX 50 | RTX 40 | RTX 30 and 20 | GTX, AMD, Intel |
+|---|---|---|---|---|
+| DLSS Frame Generation (`k`) | up to 6x | 2x only | no | no |
+| NVIDIA video Frame Generation (`h`) | yes | yes | no | no |
+| NVIDIA Super Resolution (`a`) | yes | yes | yes | no |
+| Sharpening (`y`), playback, interface | yes | yes | yes | yes |
+
+You do not need to know which card you have: what it cannot do is dimmed and its
+key does nothing.
+
+The only card this has been tested on is an RTX 5080. The rest of the table
+follows NVIDIA's requirements for
+[DLSS](https://www.nvidia.com/en-us/geforce/technologies/dlss/) and for the
+[VFX SDK](https://github.com/NVIDIA-Maxine/nvidia-vfx-python-samples); the GTX,
+AMD and Intel column in particular is untested.
+
+Drivers, for the NVIDIA features:
+
+* developed with the proprietary driver 620.73.04;
+* the VFX SDK (`h`, `a`) asks for 570.190, 580.82, 590.44 or newer on Linux and
+  570.65 or newer on Windows.
+
+Hardware decoding (Vulkan or NVDEC) gives the best performance; videos the GPU
+cannot decode are decoded in software. Windows builds can be made too, but have
+not been tested on real Windows.
+
+## Screenshots
+
+<figure>
+<img src="dlssg/screenshots/frame-generation.jpg" alt="DLSS Frame Generation at 6x">
+<figcaption>DLSS Frame Generation at 6x (<code>FG</code> button). <em>Big Buck Bunny</em> © 2008 Blender Foundation, <a href="https://www.bigbuckbunny.org">bigbuckbunny.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</figcaption>
+</figure>
+
+<figure>
+<img src="dlssg/screenshots/video-frame-generation.jpg" alt="NVIDIA video Frame Generation, high quality 2x">
+<figcaption>NVIDIA video Frame Generation, high quality 2x (<code>NV</code>). <em>Sintel</em> © Blender Foundation, <a href="https://durian.blender.org">durian.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</figcaption>
+</figure>
+
+<figure>
+<img src="dlssg/screenshots/sharpening.jpg" alt="Sharpening and seekbar thumbnail">
+<figcaption>Sharpening at 0.5 (<code>SH</code>) and a seekbar thumbnail. <em>Sintel</em> © Blender Foundation, <a href="https://durian.blender.org">durian.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</figcaption>
+</figure>
+
+<figure>
+<img src="dlssg/screenshots/super-resolution.jpg" alt="Super Resolution with video Frame Generation">
+<figcaption>Super Resolution (<code>SR</code>) of a 720p video with video Frame Generation (<code>NV</code>). <em>Tears of Steel</em> © Blender Foundation, <a href="https://mango.blender.org">mango.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</figcaption>
+</figure>
+
+Screenshots of the player over the Blender open movies. The films keep their own
+license.
 
 ## What is changed
 
@@ -75,13 +130,6 @@ with colours preserved, but its picture quality has not been judged.
 
 Videos the GPU cannot decode, such as old Xvid or DivX ones, work with all of
 these too: they are decoded in software and copied to the GPU.
-
-## Requirements
-
-* GeForce RTX 50 series for up to 6x. RTX 40 series should be limited to 2x
-  (untested).
-* A recent proprietary NVIDIA driver (developed with 620.73.04).
-* Vulkan hardware decoding of the video you play.
 
 ## Installation (Arch Linux)
 
@@ -158,29 +206,61 @@ line to the `PKGBUILD`; all of that is public. The package builds what is on the
 mpv-dlssg video.mkv
 ```
 
+## Keys
+
+Picture:
+
+| Key | Button | Action |
+|---|---|---|
+| `k` | `FG` | DLSS Frame Generation, rotate: off, 2x, 3x, 4x, 5x, 6x, off |
+| `h` | `NV` | NVIDIA video Frame Generation, rotate: off, medium 2x, high 2x, medium 4x, high 4x, medium 6x, off |
+| `a` | `SR` | NVIDIA Super Resolution up to the screen size, rotate: off, for good quality sources, for compressed ones, off |
+| `y` | `SH` | sharpening, rotate: off, 0.25, 0.5, 0.75, 1, off |
+
+A right click on one of these buttons turns that feature off. Factors the display
+cannot show, or the graphics card cannot generate, are skipped. The keys of
+features the card does not support do nothing.
+
+Window:
+
 | Key | Action |
 |---|---|
-| `k` | rotate: off, 2x, 3x, 4x, 5x, 6x, off |
-| `h` | NVIDIA video Frame Generation, rotate: off, medium 2x, high 2x, medium 4x, high 4x, medium 6x |
-| `a` | NVIDIA Super Resolution up to the screen size, rotate: off, for good quality sources, for compressed ones |
-| `y` | rotate the sharpening: off, 0.25, 0.5, 0.75, 1 |
 | `c` | rotate the window size: 100%, 75%, 50%, 25% (needs ModernZ) |
 | `Alt+1` ... `Alt+4` | window at 100%, 75%, 50%, 25% of the video size, centred |
 | `Ctrl+1` | full screen |
 | `Ctrl+2` ... `Ctrl+4` | window at 75%, 50%, 25% of the screen size, centred |
-| `f` or `F11` | full screen |
+| `f`, `F11` or double click | full screen on and off |
+
+Playback (the usual mpv keys):
+
+| Key | Action |
+|---|---|
+| `Space` or `p` | pause |
+| `Left`, `Right` | seek 5 seconds |
+| `Down`, `Up` | seek 1 minute |
+| `[`, `]` | slower, faster |
+| `9`, `0` | volume down, up |
+| `m` | mute |
+| `#` | next audio track |
+| `j` | next subtitle track |
+| `v` | show or hide the subtitles |
+| `s` | screenshot |
+| `i` | statistics |
+| right click on the video | menu |
 | `Esc` or `q` | quit |
 
-Factors the display cannot show are skipped. The window button and `c` centre the
-window too. Wayland does not let a program place its window, so there centring
-needs KDE, where KWin is asked to do it.
+The window button and `c` centre the window too. Wayland does not let a program
+place its window, so there centring needs KDE, where KWin is asked to do it.
 
 Your usual mpv configuration is used, and the keys are changed like any other
-mpv binding, in `input.conf`. There is also an on/off binding, `dlssg/toggle`,
-with no key by default:
+mpv binding, in `input.conf`. These are the names of the bindings; `toggle`
+(DLSS Frame Generation on and off) has no key by default:
 
 ```
 k    script-binding dlssg/cycle
+h    script-binding dlssg/nv
+a    script-binding dlssg/sr
+y    script-binding dlssg/sharpen
 T    script-binding dlssg/toggle
 ```
 
@@ -213,7 +293,6 @@ any shaders of your configuration.
   (VMAF 62.7 against 68.4, at 2x). Expect artifacts around occlusions.
 * 6x has been tested for performance (3840x1606 at 144 fps on an RTX 5080 with
   no dropped frames), not evaluated for quality.
-* Software decoded video is not supported.
 * HDR: on Linux, HDR10 (PQ, BT.2020) keeps 10 bits, its transfer function and
   metadata up to the display. It was tested with a clip converted from SDR, so
   the picture quality on real HDR material has not been judged. Dolby Vision,

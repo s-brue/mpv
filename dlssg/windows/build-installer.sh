@@ -75,8 +75,10 @@ of the screen, f or F11 full screen, Esc or q quit. Right click: menu.
 The window has no title bar: drag the picture to move it and its edges to resize
 it (border=yes in portable_config\\mpv.conf brings the bar back).
 
-Needs Windows 10 or 11 (64 bit), a GeForce RTX 50 series card for up to 6x
-(40 series: 2x, untested) and a recent NVIDIA driver.
+Needs Windows 10 or 11 (64 bit) and NVIDIA driver 570.65 or newer.
+DLSS Frame Generation: RTX 50 up to 6x, RTX 40 2x. NVIDIA video Frame
+Generation: RTX 40 or newer. Super Resolution: RTX 20 or newer. Sharpening: any
+card. Only an RTX 5080 has been tried. What the card cannot do is dimmed.
 TEXT
 sed -i 's/$/\r/' "$program/DO-NOT-DISTRIBUTE.txt" "$config/portable_config/mpv.conf"
 

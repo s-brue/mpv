@@ -14,7 +14,15 @@ Unpack anywhere and drop a video on mpv-dlssg.bat.
   f    full screen (also F11)
   q    quit (also Esc)
 
-Requires a GeForce RTX 50 series card for up to 6x (40 series: 2x, untested) and
-a recent NVIDIA driver.
+Hardware (only an RTX 5080 has been tried; the rest follows NVIDIA's requirements):
+
+                          RTX 50    RTX 40    RTX 30/20    others
+  k  DLSS Frame Gen.      up to 6x  2x        no           no
+  h  NVIDIA video FG      yes       yes       no           no
+  a  Super Resolution     yes       yes       yes          no
+  y  sharpness            yes       yes       yes          yes
+
+What the card cannot do is dimmed and its key does nothing. Needs NVIDIA driver
+570.65 or newer.
 
 This build has not been tested on real Windows yet.
