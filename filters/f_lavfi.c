@@ -254,6 +254,56 @@ static void add_pads_direct(struct lavfi *c, int dir, AVFilterContext *f,
 }
 
 // Parse the user-provided filter graph, and populate the unlinked filter pads.
+// The device given to the filters of the graph, or NULL.
+static struct mp_hwdec_ctx *get_hwdec_ctx(struct lavfi *c)
+{
+    struct mp_stream_info *info = mp_filter_find_stream_info(c->f);
+    if (!info || !info->hwdec_devs)
+        return NULL;
+
+    struct mp_hwdec_ctx *hwdec_ctx;
+    if (c->hwdec_interop) {
+        int imgfmt = ra_hwdec_driver_get_imgfmt_for_name(c->hwdec_interop);
+        enum AVHWDeviceType device_type =
+            ra_hwdec_driver_get_device_type_for_name(c->hwdec_interop);
+        hwdec_ctx = mp_filter_load_hwdec_device(c->f, imgfmt, device_type);
+    } else {
+        hwdec_ctx = hwdec_devices_get_first(info->hwdec_devs);
+    }
+    return hwdec_ctx && hwdec_ctx->av_device_ref ? hwdec_ctx : NULL;
+}
+
+static void set_hw_device(struct lavfi *c, struct mp_hwdec_ctx *hwdec_ctx)
+{
+    for (int n = 0; n < c->graph->nb_filters; n++) {
+        AVFilterContext *filter = c->graph->filters[n];
+        av_buffer_unref(&filter->hw_device_ctx);
+        filter->hw_device_ctx = av_buffer_ref(hwdec_ctx->av_device_ref);
+        MP_HANDLE_OOM(filter->hw_device_ctx);
+    }
+}
+
+// avfilter_graph_parse2(), but with the device set before the filters are
+// initialized, which some of them (hwupload) require.
+static int parse_graph(struct lavfi *c, AVFilterInOut **in, AVFilterInOut **out)
+{
+    AVFilterGraphSegment *segment = NULL;
+    int ret = avfilter_graph_segment_parse(c->graph, c->graph_string, 0, &segment);
+
+    if (ret >= 0)
+        ret = avfilter_graph_segment_create_filters(segment, 0);
+    if (ret >= 0 && c->hwdec_interop) {
+        struct mp_hwdec_ctx *hwdec_ctx = get_hwdec_ctx(c);
+        if (hwdec_ctx)
+            set_hw_device(c, hwdec_ctx);
+    }
+    if (ret >= 0)
+        ret = avfilter_graph_segment_apply(segment, 0, in, out);
+
+    avfilter_graph_segment_free(&segment);
+    return ret;
+}
+
 static void precreate_graph(struct lavfi *c, bool first_init)
 {
     mp_assert(!c->graph);
@@ -290,7 +340,7 @@ static void precreate_graph(struct lavfi *c, bool first_init)
                         filter->nb_outputs, first_init);
     } else {
         AVFilterInOut *in = NULL, *out = NULL;
-        if (avfilter_graph_parse2(c->graph, c->graph_string, &in, &out) < 0) {
+        if (parse_graph(c, &in, &out) < 0) {
             MP_FATAL(c, "parsing the filter graph failed\n");
             goto error;
         }
@@ -563,27 +613,11 @@ static void init_graph(struct lavfi *c)
         precreate_graph(c, false);
 
     if (init_pads(c)) {
-        struct mp_stream_info *info = mp_filter_find_stream_info(c->f);
-        if (info && info->hwdec_devs) {
-            struct mp_hwdec_ctx *hwdec_ctx = NULL;
-            if (c->hwdec_interop) {
-                int imgfmt =
-                    ra_hwdec_driver_get_imgfmt_for_name(c->hwdec_interop);
-                enum AVHWDeviceType device_type =
-                    ra_hwdec_driver_get_device_type_for_name(c->hwdec_interop);
-                hwdec_ctx = mp_filter_load_hwdec_device(c->f, imgfmt, device_type);
-            } else {
-                hwdec_ctx = hwdec_devices_get_first(info->hwdec_devs);
-            }
-            if (hwdec_ctx && hwdec_ctx->av_device_ref) {
-                MP_VERBOSE(c, "Configuring hwdec_interop=%s for filter graph: %s\n",
-                           hwdec_ctx->driver_name, c->graph_string);
-                for (int n = 0; n < c->graph->nb_filters; n++) {
-                    AVFilterContext *filter = c->graph->filters[n];
-                    filter->hw_device_ctx =
-                        av_buffer_ref(hwdec_ctx->av_device_ref);
-                }
-            }
+        struct mp_hwdec_ctx *hwdec_ctx = get_hwdec_ctx(c);
+        if (hwdec_ctx) {
+            MP_VERBOSE(c, "Configuring hwdec_interop=%s for filter graph: %s\n",
+                       hwdec_ctx->driver_name, c->graph_string);
+            set_hw_device(c, hwdec_ctx);
         }
 
         // And here the actual libavfilter initialization happens.
